@@ -22,7 +22,8 @@ const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
 async function pushSchema(): Promise<void> {
   console.log('📦 Pushing database schema...');
   try {
-    execSync('npx drizzle-kit push', { stdio: 'inherit' });
+    // Use --force to skip interactive confirmation prompts in CI/CD environments
+    execSync('npx drizzle-kit push --force', { stdio: 'inherit' });
     console.log('   ✓ Schema pushed successfully\n');
   } catch (error) {
     console.error('   ✗ Failed to push schema');
