@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": false,
+    "allowImportingTsExtensions": false,
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
