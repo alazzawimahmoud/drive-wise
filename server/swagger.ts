@@ -1,5 +1,14 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const productionUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : process.env.PUBLIC_URL;
+
+const servers = isProduction && productionUrl
+  ? [{ url: productionUrl, description: 'Production server' }]
+  : [{ url: 'http://localhost:3000', description: 'Development server' }];
+
 const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
@@ -11,12 +20,7 @@ const options: swaggerJsdoc.Options = {
         name: 'DriveWise',
       },
     },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-        description: 'Development server',
-      },
-    ],
+    servers,
     components: {
       schemas: {
         Locale: {
