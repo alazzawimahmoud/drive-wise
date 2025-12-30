@@ -1,0 +1,53 @@
+{
+  "name": "drive-wise",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Belgian driving license theory questions API",
+  "scripts": {
+    "dev": "tsx watch server/index.ts",
+    "build": "vite build && tsc -p tsconfig.node.json",
+    "preview": "NODE_ENV=production node dist/server/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "data:cleanup": "tsx scripts/cleanup.ts",
+    "data:rephrase": "tsx scripts/rephrase.ts",
+    "data:validate": "tsx scripts/validate.ts",
+    "data:seed": "tsx scripts/seed.ts",
+    "data:pipeline": "npm run data:cleanup && npm run data:rephrase && npm run data:validate && npm run data:seed"
+  },
+  "keywords": [
+    "driving",
+    "license",
+    "theory",
+    "belgium",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.2",
+    "express": "^5.1.0",
+    "he": "^1.2.0",
+    "p-limit": "^6.2.0",
+    "postgres": "^3.4.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "vite": "^7.3.0",
+    "vite-express": "^0.19.0",
+    "zod": "^3.25.34"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/he": "^1.2.3",
+    "@types/node": "^22.15.30",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
