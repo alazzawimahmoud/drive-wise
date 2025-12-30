@@ -14,7 +14,7 @@ if (isProduction) {
   app.use(express.static(clientPath));
 
   // SPA fallback - only for non-API routes
-  app.get('*', (req, res, next) => {
+  app.get('/{*splat}', (req, res, next) => {
     // Don't serve index.html for API routes
     if (req.path.startsWith('/api')) {
       return next();
