@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "build": "vite build && tsc -p tsconfig.node.json",
+    "start": "NODE_ENV=production node dist/server/index.js",
     "preview": "NODE_ENV=production node dist/server/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
