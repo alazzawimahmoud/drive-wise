@@ -1,9 +1,32 @@
 import { Router } from 'express';
+import swaggerUi from 'swagger-ui-express';
 import { categoriesRouter } from './categories.js';
 import { questionsRouter } from './questions.js';
 import { examRouter } from './exam.js';
+import { swaggerSpec } from '../swagger.js';
 
 export const router = Router();
+
+// Swagger documentation
+router.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'DriveWise API Documentation',
+}));
+
+// Serve OpenAPI spec as JSON
+router.get('/docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// Health check endpoint
+router.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+  });
+});
 
 // Mount route modules
 router.use('/categories', categoriesRouter);
