@@ -9,9 +9,8 @@ dist/
 .env.local
 .env.*.local
 
-# Data files (keep .gitkeep)
-data/*.json
-!data/.gitkeep
+# Data files - allow seed data, ignore intermediate files
+data/progress.json
 
 # Logs
 *.log
