@@ -53,6 +53,26 @@ export const categoryTranslations = pgTable('category_translations', {
 });
 
 // ============================================================================
+// LESSONS
+// ============================================================================
+
+export const lessons = pgTable('lessons', {
+  id: serial('id').primaryKey(),
+  number: integer('number').unique().notNull(), // Lesson number (1-34)
+  slug: varchar('slug', { length: 50 }).unique().notNull(), // les-1, les-2, etc.
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const lessonTranslations = pgTable('lesson_translations', {
+  id: serial('id').primaryKey(),
+  lessonId: integer('lesson_id').references(() => lessons.id).notNull(),
+  locale: varchar('locale', { length: 10 }).references(() => locales.code).notNull(),
+  title: varchar('title', { length: 255 }).notNull(), // Topic name
+  description: text('description'),
+});
+
+// ============================================================================
 // QUESTIONS
 // ============================================================================
 
@@ -99,6 +119,16 @@ export const choiceTranslations = pgTable('choice_translations', {
 });
 
 // ============================================================================
+// QUESTION-LESSON JUNCTION (many-to-many)
+// ============================================================================
+
+export const questionLessons = pgTable('question_lessons', {
+  id: serial('id').primaryKey(),
+  questionId: integer('question_id').references(() => questions.id).notNull(),
+  lessonId: integer('lesson_id').references(() => lessons.id).notNull(),
+});
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -137,6 +167,7 @@ export const questionsRelations = relations(questions, ({ one, many }) => ({
   }),
   translations: many(questionTranslations),
   choices: many(choices),
+  questionLessons: many(questionLessons),
 }));
 
 export const questionTranslationsRelations = relations(questionTranslations, ({ one }) => ({
@@ -170,6 +201,33 @@ export const choiceTranslationsRelations = relations(choiceTranslations, ({ one 
   locale: one(locales, {
     fields: [choiceTranslations.locale],
     references: [locales.code],
+  }),
+}));
+
+export const lessonsRelations = relations(lessons, ({ many }) => ({
+  translations: many(lessonTranslations),
+  questionLessons: many(questionLessons),
+}));
+
+export const lessonTranslationsRelations = relations(lessonTranslations, ({ one }) => ({
+  lesson: one(lessons, {
+    fields: [lessonTranslations.lessonId],
+    references: [lessons.id],
+  }),
+  locale: one(locales, {
+    fields: [lessonTranslations.locale],
+    references: [locales.code],
+  }),
+}));
+
+export const questionLessonsRelations = relations(questionLessons, ({ one }) => ({
+  question: one(questions, {
+    fields: [questionLessons.questionId],
+    references: [questions.id],
+  }),
+  lesson: one(lessons, {
+    fields: [questionLessons.lessonId],
+    references: [lessons.id],
   }),
 }));
 

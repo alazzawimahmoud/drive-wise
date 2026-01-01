@@ -49,6 +49,17 @@ const options: swaggerJsdoc.Options = {
             description: { type: 'string', nullable: true },
           },
         },
+        Lesson: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 12 },
+            number: { type: 'integer', example: 12 },
+            slug: { type: 'string', example: 'les-12' },
+            title: { type: 'string', example: 'De snelheid' },
+            description: { type: 'string', nullable: true },
+            questionCount: { type: 'integer', example: 124 },
+          },
+        },
         Choice: {
           type: 'object',
           properties: {

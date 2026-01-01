@@ -45,6 +45,7 @@ const DUTCH_WORDS = [
   'zijn', 'wordt', 'met', 'voor', 'niet', 'aan', 'bij', 'als', 'maar',
   'rijden', 'bestuurder', 'voertuig', 'weg', 'verkeer', 'snelheid',
   'voorrang', 'kruispunt', 'parkeren', 'stopppen', 'bord', 'licht',
+  'wie', 'wat', 'waar', 'hoe', 'waarom', 'wanneer', 'welke', 'uit'
 ];
 
 function containsDutchWords(text: string): boolean {

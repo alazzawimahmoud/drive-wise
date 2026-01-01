@@ -123,6 +123,12 @@ async function main() {
   console.log('🤖 Starting LLM rephrasing...\n');
 
   // Check for API key
+  if (process.env.SKIP_REPHRASE === 'true') {
+    console.log('🔍 SKIP_REPHRASE environment variable is set, skipping rephrasing');
+    return;
+  }
+
+  // Check for API key
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('❌ ANTHROPIC_API_KEY environment variable is required');
     process.exit(1);

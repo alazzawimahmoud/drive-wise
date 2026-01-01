@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { categoriesRouter } from './categories.js';
+import { lessonsRouter } from './lessons.js';
 import { questionsRouter } from './questions.js';
 import { examRouter } from './exam.js';
 import { swaggerSpec } from '../swagger.js';
@@ -30,6 +31,7 @@ router.get('/health', (_req, res) => {
 
 // Mount route modules
 router.use('/categories', categoriesRouter);
+router.use('/lessons', lessonsRouter);
 router.use('/questions', questionsRouter);
 router.use('/exam', examRouter);
 

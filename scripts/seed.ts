@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { db } from '../server/db/index.js';
 import * as schema from '../server/db/schema.js';
-import type { CleanedQuestion } from '../server/types/index.js';
+import type { CleanedQuestion, ExtractedLesson } from '../server/types/index.js';
 
 const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
 const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
@@ -31,13 +31,15 @@ async function main() {
 
   console.log(`📂 Reading ${inputFile}...`);
   const inputData = JSON.parse(await fs.readFile(inputFile, 'utf-8'));
-  const { data: questions, assetsBaseUrl, categories: categoryList } = inputData as {
+  const { data: questions, assetsBaseUrl, categories: categoryList, lessons: lessonList } = inputData as {
     data: CleanedQuestion[];
     assetsBaseUrl: string;
     categories: string[];
+    lessons: ExtractedLesson[];
   };
   console.log(`   Found ${questions.length} questions`);
-  console.log(`   Found ${categoryList.length} categories\n`);
+  console.log(`   Found ${categoryList.length} categories`);
+  console.log(`   Found ${lessonList?.length || 0} lessons\n`);
 
   // Step 1: Seed locales
   console.log('📍 Seeding locales...');
@@ -98,7 +100,48 @@ async function main() {
   }
   console.log(`   ✓ ${categoryList.length} categories seeded\n`);
 
-  // Step 4: Seed assets
+  // Step 4: Seed lessons
+  console.log('📚 Seeding lessons...');
+  const lessonMap = new Map<number, number>(); // lessonNumber -> lessonId
+  
+  if (lessonList && lessonList.length > 0) {
+    for (const lesson of lessonList) {
+      const [insertedLesson] = await db.insert(schema.lessons).values({
+        number: lesson.number,
+        slug: lesson.slug,
+        sortOrder: lesson.number,
+      }).onConflictDoNothing().returning();
+
+      // If conflict, fetch the existing lesson
+      if (insertedLesson) {
+        lessonMap.set(lesson.number, insertedLesson.id);
+      }
+    }
+
+    // Fetch all lessons to get IDs (in case of conflicts)
+    const lessonsResult = await db.select().from(schema.lessons);
+    for (const l of lessonsResult) {
+      lessonMap.set(l.number, l.id);
+    }
+
+    // Add lesson translations
+    for (const lesson of lessonList) {
+      const lessonId = lessonMap.get(lesson.number);
+      if (lessonId) {
+        await db.insert(schema.lessonTranslations).values({
+          lessonId,
+          locale: 'nl-BE',
+          title: lesson.topic,
+          description: null,
+        }).onConflictDoNothing();
+      }
+    }
+    console.log(`   ✓ ${lessonList.length} lessons seeded\n`);
+  } else {
+    console.log('   ⚠️ No lessons found in data, skipping...\n');
+  }
+
+  // Step 6: Seed assets
   console.log('🖼️ Seeding assets...');
   const assetUuids = new Set<string>();
   const videoIds = new Set<string>();
@@ -134,10 +177,14 @@ async function main() {
   const assetMap = new Map(assetsResult.map(a => [a.uuid, a.id]));
   console.log(`   ✓ ${assetUuids.size + videoIds.size} assets seeded\n`);
 
-  // Step 5: Seed questions
+  // Step 7: Seed questions
   console.log('❓ Seeding questions...');
   let questionCount = 0;
   let choiceCount = 0;
+  let questionLessonCount = 0;
+  
+  // Store question ID mappings for lesson linking
+  const questionIdMap = new Map<string, number>(); // originalId -> questionId
 
   for (const q of questions) {
     const categoryId = categoryMap.get(q.categorySlug);
@@ -160,6 +207,8 @@ async function main() {
       imageAssetId: q.imageUuid ? assetMap.get(q.imageUuid) || null : null,
       videoAssetId: q.videoId ? assetMap.get(`video-${q.videoId}`) || null : null,
     }).returning();
+
+    questionIdMap.set(q.originalId, insertedQuestion.id);
 
     // Insert question translation
     await db.insert(schema.questionTranslations).values({
@@ -191,6 +240,20 @@ async function main() {
       choiceCount++;
     }
 
+    // Link question to lessons
+    if (q.lessonNumbers && q.lessonNumbers.length > 0) {
+      for (const lessonNum of q.lessonNumbers) {
+        const lessonId = lessonMap.get(lessonNum);
+        if (lessonId) {
+          await db.insert(schema.questionLessons).values({
+            questionId: insertedQuestion.id,
+            lessonId,
+          }).onConflictDoNothing();
+          questionLessonCount++;
+        }
+      }
+    }
+
     questionCount++;
     if (questionCount % 500 === 0) {
       console.log(`   ✓ Seeded ${questionCount}/${questions.length} questions...`);
@@ -198,7 +261,8 @@ async function main() {
   }
 
   console.log(`   ✓ ${questionCount} questions seeded`);
-  console.log(`   ✓ ${choiceCount} choices seeded\n`);
+  console.log(`   ✓ ${choiceCount} choices seeded`);
+  console.log(`   ✓ ${questionLessonCount} question-lesson links created\n`);
 
   console.log('✅ Database seeding complete!');
 }

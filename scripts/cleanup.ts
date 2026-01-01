@@ -18,10 +18,49 @@ import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import he from 'he';
-import type { RawQuestion, CleanedQuestion, CleanedChoice, RegionCode } from '../server/types/index.js';
+import type { RawQuestion, CleanedQuestion, CleanedChoice, RegionCode, ExtractedLesson } from '../server/types/index.js';
 
 const INPUT_FILE = path.join(process.cwd(), 'data_final.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
+
+// Canonical lesson names mapping (lesson number -> official topic)
+// Derived from the most common naming patterns in the data
+const LESSON_TOPICS: Record<number, string> = {
+  1: 'De openbare weg',
+  2: 'De rijstroken',
+  3: 'Het fietspad',
+  4: 'De autosnelweg',
+  5: 'De autoweg',
+  6: 'Speciale plaatsen',
+  7: 'De voetgangers',
+  8: 'De bestuurders',
+  9: 'De voertuigen',
+  10: 'Lading en zitplaatsen',
+  11: 'De lichten',
+  12: 'De snelheid',
+  13: 'De stopafstand',
+  14: 'Kruisen',
+  15: 'Inhalen - voorbijrijden',
+  16: 'Inhalen',
+  17: 'Bevoegde personen',
+  18: 'Verkeerslichten',
+  19: 'Voorrang en borden',
+  20: 'Voorrang van rechts',
+  21: 'Voorrang en afslaan',
+  22: 'Trein, tram, bus',
+  23: 'Verboden rijrichting',
+  24: 'Verplichte rijrichting',
+  25: 'Stilstaan en parkeren 1',
+  26: 'Stilstaan en parkeren 2',
+  27: 'Stilstaan en parkeren 3',
+  28: 'Alcohol en drugs',
+  29: 'Ongeval',
+  30: 'Milieu',
+  31: 'Techniek',
+  32: 'Verkeersborden',
+  33: 'Aanvullend',
+  34: 'Extra oefeningen',
+};
 
 // Region detection keywords
 const REGION_KEYWORDS: Record<RegionCode, string[]> = {
@@ -59,6 +98,41 @@ function cleanHtml(html: string): string {
   text = text.trim();
   
   return text;
+}
+
+/**
+ * Extract lesson numbers from explanation text before removing references
+ * Returns array of lesson numbers found in the text
+ */
+function extractLessonNumbers(text: string): number[] {
+  if (!text) return [];
+  
+  const lessonNumbers = new Set<number>();
+  
+  // Match patterns like "LES 12", "LES 12, 13", "LES 25 en 26"
+  const patterns = [
+    /LES\s+(\d+)/gi,
+    /LES\s+(\d+)\s*,\s*(\d+)/gi,
+    /LES\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/gi,
+    /LES\s+(\d+)\s+en\s+(\d+)/gi,
+  ];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      // Add all captured groups (lesson numbers)
+      for (let i = 1; i < match.length; i++) {
+        if (match[i]) {
+          const num = parseInt(match[i], 10);
+          if (num >= 1 && num <= 34) {
+            lessonNumbers.add(num);
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(lessonNumbers).sort((a, b) => a - b);
 }
 
 /**
@@ -225,8 +299,9 @@ function normalizeSeriesId(seriesId: string | number): string {
  */
 function processQuestion(raw: RawQuestion): CleanedQuestion {
   const questionText = cleanHtml(raw.question);
-  // Clean HTML first, then remove lesson references from explanation
+  // Clean HTML first, then extract lessons before removing references
   const explanationCleaned = cleanHtml(raw.explanation);
+  const lessonNumbers = extractLessonNumbers(explanationCleaned);
   const explanation = removeLessonReferences(explanationCleaned);
   
   const choices: CleanedChoice[] = raw.choices.map((choice, index) => ({
@@ -252,6 +327,7 @@ function processQuestion(raw: RawQuestion): CleanedQuestion {
     isMajorFault: raw.isMajorFault,
     choices,
     source: raw.source,
+    lessonNumbers, // Lesson references extracted from explanation
   };
 }
 
@@ -271,6 +347,7 @@ async function main() {
   const cleanedQuestions: CleanedQuestion[] = [];
   const categories = new Set<string>();
   const assets = new Set<string>();
+  const lessonQuestionCounts: Record<number, number> = {};
   const regionCounts: Record<RegionCode, number> = {
     national: 0,
     brussels: 0,
@@ -285,12 +362,25 @@ async function main() {
     categories.add(cleaned.categorySlug);
     regionCounts[cleaned.regionCode]++;
     
+    // Track lesson usage
+    for (const lessonNum of cleaned.lessonNumbers) {
+      lessonQuestionCounts[lessonNum] = (lessonQuestionCounts[lessonNum] || 0) + 1;
+    }
+    
     if (cleaned.imageUuid) assets.add(cleaned.imageUuid);
     if (cleaned.videoId) assets.add(`video:${cleaned.videoId}`);
     for (const choice of cleaned.choices) {
       if (choice.imageUuid) assets.add(choice.imageUuid);
     }
   }
+  
+  // Build lessons data
+  const lessons: ExtractedLesson[] = Object.entries(LESSON_TOPICS).map(([num, topic]) => ({
+    number: parseInt(num, 10),
+    slug: `les-${num}`,
+    topic,
+    questionCount: lessonQuestionCounts[parseInt(num, 10)] || 0,
+  })).filter(l => l.questionCount > 0); // Only include lessons that have questions
   
   // Ensure output directory exists
   await fs.mkdir(path.dirname(OUTPUT_FILE), { recursive: true });
@@ -301,11 +391,13 @@ async function main() {
     metadata: {
       totalQuestions: cleanedQuestions.length,
       totalCategories: categories.size,
+      totalLessons: lessons.length,
       totalAssets: assets.size,
       regionDistribution: regionCounts,
       processedAt: new Date().toISOString(),
     },
     categories: Array.from(categories).sort(),
+    lessons,
     data: cleanedQuestions,
   };
   
@@ -316,12 +408,18 @@ async function main() {
   console.log('📊 Summary:');
   console.log(`   Questions: ${cleanedQuestions.length}`);
   console.log(`   Categories: ${categories.size}`);
+  console.log(`   Lessons: ${lessons.length}`);
   console.log(`   Assets: ${assets.size}`);
   console.log('\n🌍 Region distribution:');
   console.log(`   National: ${regionCounts.national}`);
   console.log(`   Brussels: ${regionCounts.brussels}`);
   console.log(`   Flanders: ${regionCounts.flanders}`);
   console.log(`   Wallonia: ${regionCounts.wallonia}`);
+  console.log('\n📚 Top lessons by question count:');
+  const topLessons = [...lessons].sort((a, b) => b.questionCount - a.questionCount).slice(0, 5);
+  for (const lesson of topLessons) {
+    console.log(`   LES ${lesson.number}: ${lesson.topic} (${lesson.questionCount} questions)`);
+  }
   console.log(`\n📁 Output: ${OUTPUT_FILE}`);
 }
 
