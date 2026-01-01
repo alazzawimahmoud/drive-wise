@@ -8,6 +8,8 @@
  * 4. Normalizes category slugs from seriesId
  * 5. Detects region from question content
  * 6. Extracts assets (images, videos)
+ * 7. Removes lesson references from explanations (e.g., "LES 31 - 'Techniek'")
+ * 8. Removes listing prefixes from choice text (e.g., "A. ", "B/ ", "1. ")
  * 
  * Output: data/cleaned.json
  */
@@ -60,6 +62,97 @@ function cleanHtml(html: string): string {
 }
 
 /**
+ * Remove lesson references from explanation text
+ * Handles various formats of lesson references in Dutch driving theory content.
+ */
+function removeLessonReferences(text: string): string {
+  if (!text) return '';
+  
+  // Remove "LEES in LES XX ..." pattern (read in lesson references)
+  text = text.replace(/LEES\s+in\s+LES\s+\d+[^.\n]*\./gi, '');
+  text = text.replace(/Lees\s+in\s+les\s+\d+[^.\n]*\./gi, '');
+  
+  // Remove "Uitleg LES XX: 'Topic name'." or "Uitleg: LES XX - 'Topic'." pattern
+  text = text.replace(/Uitleg:?\s+LES\s+\d+[:\s\-–—]+['''.]?[^.'\n]+[''']?\.?\s*/gi, '');
+  
+  // Remove lesson references with various formats at the start of text:
+  // - "LES XX - 'Topic'." or "LES XX – 'Topic'." 
+  // - "LES XX  'Topic'." (double space, no dash)
+  // - "LES XX, YY, ZZ - 'Topic'" (comma-separated)
+  // - "LES XX en YY - 'Topic'" (using 'en')
+  // - Handles double spaces, various quote types, and multiple dashes
+  // Note: \s* for optional dash to handle "LES 23  'Topic'" (double space, no dash)
+  text = text.replace(/^LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]*\s*['''.]?[^'\n]+['''.]?\s*\n?/gim, '');
+  
+  // Same pattern but not at start of line (might be after another sentence)
+  text = text.replace(/LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]*\s*['''.]?[^'\n]+['''.]?\n/gi, '');
+  
+  // Remove lesson references with double quoted topic names
+  text = text.replace(/LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]+\s*"[^"]+"\s*[.:;\n]?\s*/gi, '');
+  
+  // Remove lesson references without quotes (just topic name ending with newline/period)
+  // Pattern: "LES XX - Topic name\n" or "LES XX - Topic name."
+  text = text.replace(/LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]+\s*[A-Za-z][^\n]*[.\n]/gi, '');
+  
+  // Remove "LES XX - Topic" at end of text (no trailing punctuation)
+  text = text.replace(/LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]+\s*[A-Za-z][^\n]*$/gim, '');
+  
+  // Remove incomplete "LES X en" patterns (lesson reference cut off)
+  text = text.replace(/LES\s+\d+\s+en\s*[\n\s]/gi, '');
+  
+  // Remove standalone "LES XX" references (just lesson number, no topic)
+  text = text.replace(/^LES\s+[\d,\s]+\s*$/gim, '');
+  text = text.replace(/LES\s+\d+\s*[.:;\n]/gi, '');
+  
+  // Remove "/ LES XX - Topic" patterns (slash-separated lesson refs)
+  text = text.replace(/\s*\/\s*LES\s+[\d,\s]+(?:en\s+[\d,\s]+)*\s*[-–—]+\s*['''.]?[^\n]+['''.;\n]?\s*/gi, '');
+  
+  // Remove "en LES XX - ..." that might be left over
+  text = text.replace(/\s*en\s+LES\s+[\d,\s]+\s*[-–—]+\s*['''.]?[^.'\n]+[''']?\.?\s*/gi, '');
+  
+  // Clean up leading dots, colons, or whitespace that might be left
+  text = text.replace(/^[.:\s]+/gm, '');
+  
+  // Clean up multiple newlines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  
+  // Trim whitespace
+  text = text.trim();
+  
+  return text;
+}
+
+/**
+ * Remove listing prefixes from choice text
+ * Patterns:
+ * - "A. ", "B. ", "C. " (uppercase letter + dot + space)
+ * - "A/ ", "B/ ", "C/ " (uppercase letter + slash + space)  
+ * - "1. ", "2. ", "3. " (number + dot + space at beginning)
+ * - "(A) ", "(1) " etc. (parenthetical)
+ */
+function removeListingPrefix(text: string): string {
+  if (!text) return '';
+  
+  // Remove letter prefix: "A. ", "B. ", etc. (case insensitive, at start)
+  text = text.replace(/^[A-Za-z][.]\s+/, '');
+  
+  // Remove letter slash prefix: "A/ ", "B/ ", etc. (at start)
+  text = text.replace(/^[A-Za-z]\/\s*/, '');
+  
+  // Remove number prefix: "1. ", "2. ", etc. (at start, but not fractions like "1/10")
+  // Only remove if followed by a capital letter or space (indicating a list item, not a measurement)
+  text = text.replace(/^(\d+)[.]\s+(?=[A-Z])/, '');
+  
+  // Remove parenthetical prefix: "(A) ", "(1) ", etc.
+  text = text.replace(/^\([A-Za-z0-9]\)\s*/, '');
+  
+  // Trim any leading/trailing whitespace
+  text = text.trim();
+  
+  return text;
+}
+
+ /**
  * Detect region from question text and explanation
  */
 function detectRegion(questionText: string, explanation: string): RegionCode {
@@ -132,11 +225,14 @@ function normalizeSeriesId(seriesId: string | number): string {
  */
 function processQuestion(raw: RawQuestion): CleanedQuestion {
   const questionText = cleanHtml(raw.question);
-  const explanation = cleanHtml(raw.explanation);
+  // Clean HTML first, then remove lesson references from explanation
+  const explanationCleaned = cleanHtml(raw.explanation);
+  const explanation = removeLessonReferences(explanationCleaned);
   
   const choices: CleanedChoice[] = raw.choices.map((choice, index) => ({
     position: index,
-    text: choice.text ? cleanHtml(choice.text) : undefined,
+    // Clean HTML first, then remove listing prefixes from choice text
+    text: choice.text ? removeListingPrefix(cleanHtml(choice.text)) : undefined,
     imageUuid: choice.image || undefined,
   }));
   
