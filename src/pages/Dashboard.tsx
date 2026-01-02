@@ -91,9 +91,24 @@ export const DashboardPage = () => {
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.displayName}!</h2>
-            <p className="text-slate-500">You're making great progress on your driving theory.</p>
+          <div className="flex items-center gap-4">
+            {user?.avatarUrl ? (
+              <img 
+                src={user.avatarUrl} 
+                alt={user.displayName}
+                className="w-16 h-16 rounded-full border-2 border-indigo-100 shadow-sm object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 border-2 border-indigo-100 shadow-sm flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">
+                  {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+            )}
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.displayName}!</h2>
+              <p className="text-slate-500">Keep practicing!</p>
+            </div>
           </div>
           
           <button 

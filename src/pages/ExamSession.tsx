@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../hooks/useAuth';
 
 interface ExamResult {
   totalQuestions: number;
@@ -23,6 +24,7 @@ interface ExamResult {
 
 export const ExamSession = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const startTimeRef = useRef<Date>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [results, setResults] = useState<ExamResult | null>(null);
@@ -260,12 +262,22 @@ export const ExamSession = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowExitModal(true)}
-              className="p-1.5 md:p-2 hover:bg-slate-100 rounded-lg transition-colors mr-1"
+              className="hover:opacity-80 transition-opacity mr-1"
               aria-label="Go to homepage"
             >
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
+              {user?.avatarUrl ? (
+                <img 
+                  src={user.avatarUrl} 
+                  alt={user.displayName}
+                  className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-slate-200 shadow-sm object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 border-2 border-slate-200 shadow-sm flex items-center justify-center">
+                  <span className="text-sm md:text-base font-bold text-white">
+                    {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
             </button>
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Question</span>
             <span className="text-lg md:text-xl font-black text-slate-900">{currentQuestionIndex + 1}</span>
