@@ -346,6 +346,11 @@ lessonsRouter.get('/:slug/questions', async (req, res) => {
           region: q.regionCode ? { code: q.regionCode, name: null } : null,
           imageUrl: getAssetUrl(q.imageUuid),
           choices: choicesFormatted,
+          lessons: [{
+            number: lesson.number,
+            slug: lesson.slug,
+            title: lesson.title,
+          }],
         };
       })
     );
