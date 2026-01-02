@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations } from '../db/schema.js';
+import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations, questionLessons, lessons, lessonTranslations } from '../db/schema.js';
 import { eq, and, sql, inArray } from 'drizzle-orm';
-import type { ExamConfig, ExamResult, AnswerSubmission } from '../types/index.js';
+import type { ExamConfig, ExamResult, AnswerSubmission, ApiQuestionLesson } from '../types/index.js';
 
 export const examRouter = Router();
 
@@ -115,9 +115,10 @@ examRouter.post('/generate', async (req, res) => {
       .orderBy(sql`RANDOM()`)
       .limit(EXAM_CONFIG.totalQuestions);
 
-    // Fetch choices for each question
+    // Fetch choices and lessons for each question
     const questionsWithChoices = await Promise.all(
       examQuestions.map(async (q) => {
+        // Fetch choices
         const questionChoices = await db
           .select({
             position: choices.position,
@@ -136,6 +137,31 @@ examRouter.post('/generate', async (req, res) => {
           .where(eq(choices.questionId, q.id))
           .orderBy(choices.position);
 
+        // Fetch lessons
+        const questionLessonsList = await db
+          .select({
+            number: lessons.number,
+            slug: lessons.slug,
+            title: lessonTranslations.title,
+          })
+          .from(questionLessons)
+          .innerJoin(lessons, eq(lessons.id, questionLessons.lessonId))
+          .leftJoin(
+            lessonTranslations,
+            and(
+              eq(lessonTranslations.lessonId, lessons.id),
+              eq(lessonTranslations.locale, locale)
+            )
+          )
+          .where(eq(questionLessons.questionId, q.id))
+          .orderBy(lessons.number);
+
+        const lessonsFormatted: ApiQuestionLesson[] = questionLessonsList.map(l => ({
+          number: l.number,
+          slug: l.slug,
+          title: l.title,
+        }));
+
         return {
           id: q.id,
           originalId: q.originalId,
@@ -153,6 +179,7 @@ examRouter.post('/generate', async (req, res) => {
             text: c.text,
             imageUrl: getAssetUrl(c.imageUuid),
           })),
+          lessons: lessonsFormatted,
         };
       })
     );

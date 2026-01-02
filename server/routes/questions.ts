@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations } from '../db/schema.js';
+import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations, questionLessons, lessons, lessonTranslations } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
-import type { ApiQuestion, ApiChoice } from '../types/index.js';
+import type { ApiQuestion, ApiChoice, ApiQuestionLesson } from '../types/index.js';
 
 export const questionsRouter = Router();
 
@@ -85,9 +85,10 @@ questionsRouter.get('/random', async (req, res) => {
       .orderBy(sql`RANDOM()`)
       .limit(count);
 
-    // Fetch choices for each question
+    // Fetch choices and lessons for each question
     const questionsWithChoices: ApiQuestion[] = await Promise.all(
       result.map(async (q) => {
+        // Fetch choices
         const questionChoices = await db
           .select({
             position: choices.position,
@@ -106,10 +107,35 @@ questionsRouter.get('/random', async (req, res) => {
           .where(eq(choices.questionId, q.id))
           .orderBy(choices.position);
 
+        // Fetch lessons
+        const questionLessonsList = await db
+          .select({
+            number: lessons.number,
+            slug: lessons.slug,
+            title: lessonTranslations.title,
+          })
+          .from(questionLessons)
+          .innerJoin(lessons, eq(lessons.id, questionLessons.lessonId))
+          .leftJoin(
+            lessonTranslations,
+            and(
+              eq(lessonTranslations.lessonId, lessons.id),
+              eq(lessonTranslations.locale, locale)
+            )
+          )
+          .where(eq(questionLessons.questionId, q.id))
+          .orderBy(lessons.number);
+
         const choicesFormatted: ApiChoice[] = questionChoices.map(c => ({
           position: c.position,
           text: c.text,
           imageUrl: getAssetUrl(c.imageUuid),
+        }));
+
+        const lessonsFormatted: ApiQuestionLesson[] = questionLessonsList.map(l => ({
+          number: l.number,
+          slug: l.slug,
+          title: l.title,
         }));
 
         return {
@@ -127,6 +153,7 @@ questionsRouter.get('/random', async (req, res) => {
           region: q.regionCode ? { code: q.regionCode, name: null } : null,
           imageUrl: getAssetUrl(q.imageUuid),
           choices: choicesFormatted,
+          lessons: lessonsFormatted,
         };
       })
     );
@@ -252,6 +279,25 @@ questionsRouter.get('/:id', async (req, res) => {
       .where(eq(choices.questionId, questionId))
       .orderBy(choices.position);
 
+    // Fetch lessons
+    const questionLessonsList = await db
+      .select({
+        number: lessons.number,
+        slug: lessons.slug,
+        title: lessonTranslations.title,
+      })
+      .from(questionLessons)
+      .innerJoin(lessons, eq(lessons.id, questionLessons.lessonId))
+      .leftJoin(
+        lessonTranslations,
+        and(
+          eq(lessonTranslations.lessonId, lessons.id),
+          eq(lessonTranslations.locale, locale)
+        )
+      )
+      .where(eq(questionLessons.questionId, questionId))
+      .orderBy(lessons.number);
+
     const response: ApiQuestion & { questionTextOriginal?: string; explanationOriginal?: string } = {
       id: question.id,
       originalId: question.originalId,
@@ -273,6 +319,11 @@ questionsRouter.get('/:id', async (req, res) => {
         position: c.position,
         text: c.text,
         imageUrl: getAssetUrl(c.imageUuid),
+      })),
+      lessons: questionLessonsList.map(l => ({
+        number: l.number,
+        slug: l.slug,
+        title: l.title,
       })),
     };
 

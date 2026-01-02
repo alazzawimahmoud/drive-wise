@@ -108,6 +108,18 @@ const options: swaggerJsdoc.Options = {
               type: 'array',
               items: { $ref: '#/components/schemas/Choice' },
             },
+            lessons: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/QuestionLesson' },
+            },
+          },
+        },
+        QuestionLesson: {
+          type: 'object',
+          properties: {
+            number: { type: 'integer', example: 12 },
+            slug: { type: 'string', example: 'les-12' },
+            title: { type: 'string', nullable: true, example: 'De snelheid' },
           },
         },
         ExamConfig: {
