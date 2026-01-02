@@ -17,7 +17,7 @@ export function getAssetUrl(uuid: string | null, type: 'image' | 'video' = 'imag
 
 // OAuth configuration
 export const OAUTH_CALLBACK_URL = process.env.OAUTH_CALLBACK_URL || 'http://localhost:3000/api/auth';
-export const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+export const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // JWT configuration
 export const JWT_SECRET = process.env.JWT_SECRET || 'drive-wise-dev-secret-change-in-production';

@@ -381,6 +381,7 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
       sessionId = session.id;
 
       // Persist individual answers for detailed analytics
+      // Note: unanswered questions have null/undefined submitted values - store as special marker
       const answerRecords = details
         .filter((d): d is typeof d & { categoryId: number; isCorrect: boolean; isMajorFault: boolean } => 
           'categoryId' in d && 
@@ -392,7 +393,7 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
           sessionId: session.id,
           questionId: d.questionId,
           categoryId: d.categoryId,
-          submittedAnswer: d.submitted,
+          submittedAnswer: d.submitted ?? { unanswered: true },
           correctAnswer: d.correct,
           isCorrect: d.isCorrect,
           isMajorFault: d.isMajorFault,

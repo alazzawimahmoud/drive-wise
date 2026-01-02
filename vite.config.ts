@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
 
 export default defineConfig({
-  // Ready for React: just add @vitejs/plugin-react to plugins array
-  plugins: [],
+  plugins: [react()],
   
   server: {
     port: 3000,
