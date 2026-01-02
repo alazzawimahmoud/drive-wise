@@ -23,3 +23,9 @@ export const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 export const JWT_SECRET = process.env.JWT_SECRET || 'drive-wise-dev-secret-change-in-production';
 export const JWT_EXPIRES_IN = '30d';
 
+// Admin configuration
+export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map(email => email.trim().toLowerCase())
+  .filter(email => email.length > 0);
+

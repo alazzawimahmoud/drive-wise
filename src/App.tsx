@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { AuthCallback } from './pages/AuthCallback';
 import { ExamSession } from './pages/ExamSession';
 import { DashboardPage } from './pages/Dashboard';
+import { AdminDashboardPage } from './pages/AdminDashboard';
 import React from 'react';
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ExamSession />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <AdminDashboardPage />
                 </ProtectedRoute>
               } 
             />

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { AuthenticatedUser } from '../auth/passport.js';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, ADMIN_EMAILS } from '../config.js';
 
 // Re-export for convenience
 export type { AuthenticatedUser } from '../auth/passport.js';
@@ -106,6 +106,40 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
       };
     }
   }
+
+  next();
+}
+
+/**
+ * Admin-only middleware - requires authentication AND admin email
+ */
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  // First check authentication
+  const token = extractToken(req);
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  // Check if user is admin
+  if (!payload.email || !ADMIN_EMAILS.includes(payload.email.toLowerCase())) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  req.user = {
+    id: payload.userId,
+    email: payload.email,
+    displayName: payload.displayName,
+    avatarUrl: null,
+    preferredLocale: 'nl-BE',
+    preferredRegion: 'national',
+  };
 
   next();
 }

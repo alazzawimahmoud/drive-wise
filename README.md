@@ -13,6 +13,7 @@ Belgian driving license theory questions API with Vite + Express hybrid architec
 - **Bookmarks** - save questions for later or mark as difficult
 - **Session history** - track all exam attempts with detailed analytics
 - **Statistics & insights** - weakest categories, license probability, progress over time
+- **Admin dashboard** - view all users and their progress (admin-only)
 
 ## Tech Stack
 
@@ -42,6 +43,7 @@ Belgian driving license theory questions API with Vite + Express hybrid architec
 | `FRONTEND_URL` | No | Frontend URL for OAuth redirects (default: `http://localhost:5173`) |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth Client ID |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth Client Secret |
+| `ADMIN_EMAILS` | No | Comma-separated list of admin email addresses |
 | `ANTHROPIC_API_KEY` | No | For LLM-powered content rephrasing |
 | `NODE_ENV` | No | `development` or `production` |
 | `PORT` | No | Server port (default: 3000) |
@@ -143,6 +145,13 @@ Full API documentation available at `/api/docs` (Swagger UI).
 | GET | `/api/stats/progress` | Get progress over time |
 | GET | `/api/stats/difficult-questions` | Get most missed questions |
 | GET | `/api/stats/ready-for-exam` | Get exam readiness assessment |
+
+### Admin Endpoints (require admin email)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/users` | Get all registered users with their progress |
+| GET | `/api/admin/stats` | Get platform-wide statistics |
 
 ## OAuth Authentication
 
