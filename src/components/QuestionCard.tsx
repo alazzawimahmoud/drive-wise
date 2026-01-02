@@ -49,7 +49,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
           className={clsx(
-            "bg-white rounded-3xl shadow-xl overflow-hidden border-2 transition-colors",
+            "bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 transition-colors",
             showFeedback && selectedAnswer !== undefined
               ? isCorrect
                 ? "border-emerald-500 shadow-emerald-100"
@@ -58,14 +58,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           )}
         >
           {question.imageUrl && (
-            <div className="aspect-video w-full bg-slate-100 relative">
+            <div className="aspect-[9/7] w-full bg-slate-100 relative">
               <img
                 src={question.imageUrl}
                 alt="Question scenario"
                 className="w-full h-full object-cover"
               />
               {question.isMajorFault && (
-                <div className="absolute top-4 right-4 bg-rose-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">
+                <div className="absolute top-2 md:top-4 right-2 md:right-4 bg-rose-600 text-white px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-lg">
                   Major Fault
                 </div>
               )}
@@ -104,12 +104,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </div>
           )}
 
-          <div className="p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-8 leading-tight">
+          <div className="p-3 md:p-8">
+            <h2 className="text-base md:text-xl font-bold text-slate-900 mb-3 md:mb-8 leading-tight">
               {question.questionText}
             </h2>
 
-            <div className="space-y-4">
+            <div className="space-y-2 md:space-y-4">
               {question.answerType === 'INPUT' ? (
                 <div className="space-y-4">
                   <div className="relative">
@@ -122,7 +122,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       placeholder="Typ hier je antwoord..."
                       disabled={showFeedback}
                       className={clsx(
-                        "w-full p-6 text-2xl font-bold rounded-2xl border-4 transition-all text-center outline-none",
+                        "w-full p-4 md:p-6 text-xl md:text-2xl font-bold rounded-2xl border-4 transition-all text-center outline-none",
                         showFeedback
                           ? isCorrect
                             ? "border-emerald-500 bg-emerald-50 text-emerald-900"
@@ -131,15 +131,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       )}
                     />
                     {showFeedback && !isCorrect && (
-                      <div className="mt-4 p-4 bg-emerald-100 rounded-xl border border-emerald-200 text-center">
-                        <span className="text-emerald-800 font-bold uppercase text-xs tracking-wider block mb-1">Correct Antwoord</span>
-                        <span className="text-emerald-900 text-xl font-black">{question.answer}</span>
+                      <div className="mt-2 md:mt-4 p-3 md:p-4 bg-emerald-100 rounded-lg md:rounded-xl border border-emerald-200 text-center">
+                        <span className="text-emerald-800 font-bold uppercase text-[10px] md:text-xs tracking-wider block mb-1">Correct Antwoord</span>
+                        <span className="text-emerald-900 text-lg md:text-xl font-black">{question.answer}</span>
                       </div>
                     )}
                   </div>
                 </div>
               ) : question.answerType === 'YES_NO' ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
                   {question.choices.map((choice) => {
                     const isSelected = selectedAnswer === choice.position;
                     const isChoiceCorrect = question.answer === choice.position;
@@ -149,7 +149,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         key={choice.position}
                         onClick={() => !showFeedback && onAnswer(choice.position)}
                         className={clsx(
-                          "p-8 rounded-3xl text-center transition-all border-4 flex flex-col items-center justify-center gap-3",
+                          "p-3 md:p-8 rounded-2xl md:rounded-3xl text-center transition-all border-4 flex flex-col items-center justify-center gap-1 md:gap-3",
                           isSelected
                             ? showFeedback
                               ? isCorrect ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-rose-500 bg-rose-50 text-rose-900"
@@ -160,14 +160,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                           showFeedback && "cursor-default"
                         )}
                       >
-                        <span className="text-3xl font-black">{choice.text}</span>
+                        <span className="text-lg md:text-3xl font-black">{choice.text}</span>
                       </button>
                     );
                   })}
                 </div>
               ) : question.answerType === 'ORDER' ? (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap gap-4 justify-center">
+                <div className="space-y-2 md:space-y-4">
+                  <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
                     {question.choices.map((choice) => {
                       const orderIndex = (selectedAnswer as number[] || []).indexOf(choice.position);
                       const isSelected = orderIndex !== -1;
@@ -228,7 +228,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   if (hasImageChoices) {
                     // Image-based SINGLE_CHOICE layout (grid of images)
                     return (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2 md:gap-4">
                         {question.choices.map((choice) => {
                           const isSelected = selectedAnswer === choice.position;
                           const isChoiceCorrect = choice.position === question.answer;
@@ -238,7 +238,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                               key={choice.position}
                               onClick={() => !showFeedback && onAnswer(choice.position)}
                               className={clsx(
-                                "relative aspect-square rounded-2xl border-4 transition-all overflow-hidden bg-white shadow-sm",
+                                "relative aspect-square rounded-xl md:rounded-2xl border-4 transition-all overflow-hidden bg-white shadow-sm",
                                 isSelected
                                   ? showFeedback
                                     ? isCorrect
@@ -317,7 +317,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         key={choice.position}
                         onClick={() => !showFeedback && onAnswer(choice.position)}
                         className={clsx(
-                          "w-full p-4 rounded-2xl text-left transition-all border-2 flex items-center gap-4 relative overflow-hidden",
+                          "w-full p-2.5 md:p-4 rounded-xl md:rounded-2xl text-left transition-all border-2 flex items-center gap-2 md:gap-4 relative overflow-hidden",
                           isSelected
                             ? showFeedback
                               ? isCorrect
@@ -331,7 +331,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         )}
                       >
                         <span className={clsx(
-                          "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors",
+                          "w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm shrink-0 transition-colors",
                           isSelected
                             ? showFeedback
                               ? isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
@@ -342,7 +342,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         )}>
                           {String.fromCharCode(65 + choice.position)}
                         </span>
-                        <span className="font-medium">{choice.text}</span>
+                        <span className="text-sm md:text-base font-medium">{choice.text}</span>
                         
                         {showFeedback && (isSelected || isChoiceCorrect) && (
                           <div className="ml-auto">

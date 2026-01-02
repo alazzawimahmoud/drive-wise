@@ -252,22 +252,20 @@ export const ExamSession = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 p-2 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8 px-4">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Question</span>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-slate-900">{currentQuestionIndex + 1}</span>
-              <span className="text-slate-300 font-bold">/</span>
-              <span className="text-lg font-bold text-slate-400">{questions.length}</span>
-            </div>
+        <div className="flex items-center justify-between mb-3 md:mb-6 px-2 md:px-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Question</span>
+            <span className="text-lg md:text-xl font-black text-slate-900">{currentQuestionIndex + 1}</span>
+            <span className="text-slate-300 font-bold">/</span>
+            <span className="text-base md:text-lg font-bold text-slate-400">{questions.length}</span>
           </div>
 
-          <div className="flex flex-col items-end space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Time Remaining</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
             <span className={clsx(
-              "text-xl font-mono font-bold",
+              "text-base md:text-lg font-mono font-bold",
               timeLeft < 300 ? "text-rose-600" : "text-slate-700"
             )}>
               {formatTime(timeLeft)}
@@ -281,11 +279,11 @@ export const ExamSession = () => {
           onAnswer={(answer) => send({ type: 'SUBMIT_ANSWER', questionId: currentQuestion.id, answer })}
         />
 
-        <div className="mt-8 flex items-center justify-between px-4">
+        <div className="mt-3 md:mt-8 flex items-center justify-between px-2 md:px-4">
           <button
             onClick={() => send({ type: 'PREV_QUESTION' })}
             disabled={currentQuestionIndex === 0}
-            className="px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-all"
+            className="px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-all"
           >
             Previous
           </button>
@@ -293,14 +291,14 @@ export const ExamSession = () => {
           {currentQuestionIndex === questions.length - 1 ? (
             <button
               onClick={() => send({ type: 'FINISH_EXAM' })}
-              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all"
+              className="px-5 md:px-8 py-2 md:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg md:rounded-xl text-sm md:text-base font-bold shadow-lg shadow-emerald-200 transition-all"
             >
               Finish Exam
             </button>
           ) : (
             <button
               onClick={() => send({ type: 'NEXT_QUESTION' })}
-              className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all"
+              className="px-5 md:px-8 py-2 md:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg md:rounded-xl text-sm md:text-base font-bold shadow-lg shadow-indigo-200 transition-all"
             >
               Next Question
             </button>
