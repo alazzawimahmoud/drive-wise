@@ -1,5 +1,99 @@
-import { pgTable, serial, varchar, text, boolean, integer, json, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, boolean, integer, json, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+// ============================================================================
+// USERS (Multi-provider OAuth)
+// ============================================================================
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).unique(), // Optional - some providers may not provide email
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  avatarUrl: text('avatar_url'),
+  preferredLocale: varchar('preferred_locale', { length: 10 }).default('nl-BE').notNull(),
+  preferredRegion: varchar('preferred_region', { length: 50 }).default('national'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// OAUTH ACCOUNTS (Link users to OAuth providers)
+// ============================================================================
+
+export const oauthAccounts = pgTable('oauth_accounts', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  provider: varchar('provider', { length: 50 }).notNull(), // e.g. 'google'
+  providerAccountId: varchar('provider_account_id', { length: 255 }).notNull(),
+  accessToken: text('access_token'), // Encrypted in production
+  refreshToken: text('refresh_token'), // Encrypted in production
+  tokenExpiresAt: timestamp('token_expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('oauth_provider_account_idx').on(table.provider, table.providerAccountId),
+]);
+
+// ============================================================================
+// USER BOOKMARKS
+// ============================================================================
+
+export const userBookmarks = pgTable('user_bookmarks', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  questionId: integer('question_id').references(() => questions.id, { onDelete: 'cascade' }).notNull(),
+  bookmarkType: varchar('bookmark_type', { length: 20 }).notNull(), // 'saved', 'difficult', 'review'
+  notes: text('notes'), // Optional user notes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('user_question_bookmark_idx').on(table.userId, table.questionId, table.bookmarkType),
+]);
+
+// ============================================================================
+// EXAM SESSIONS
+// ============================================================================
+
+export const examSessions = pgTable('exam_sessions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  sessionType: varchar('session_type', { length: 20 }).default('exam').notNull(), // 'exam', 'practice', 'review'
+  
+  // Results
+  totalQuestions: integer('total_questions').notNull(),
+  correctAnswers: integer('correct_answers').notNull(),
+  incorrectAnswers: integer('incorrect_answers').notNull(),
+  majorFaults: integer('major_faults').notNull(),
+  minorFaults: integer('minor_faults').notNull(),
+  score: integer('score').notNull(),
+  maxScore: integer('max_score').notNull(),
+  passed: boolean('passed').notNull(),
+  percentage: integer('percentage').notNull(),
+  
+  // Timing
+  timeTakenSeconds: integer('time_taken_seconds'),
+  startedAt: timestamp('started_at').notNull(),
+  completedAt: timestamp('completed_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// EXAM SESSION ANSWERS (for detailed analytics)
+// ============================================================================
+
+export const examSessionAnswers = pgTable('exam_session_answers', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').references(() => examSessions.id, { onDelete: 'cascade' }).notNull(),
+  questionId: integer('question_id').references(() => questions.id, { onDelete: 'cascade' }).notNull(),
+  categoryId: integer('category_id').references(() => categories.id).notNull(),
+  
+  submittedAnswer: json('submitted_answer').notNull(),
+  correctAnswer: json('correct_answer').notNull(),
+  isCorrect: boolean('is_correct').notNull(),
+  isMajorFault: boolean('is_major_fault').notNull(),
+  
+  // Time spent on this question (optional, for future use)
+  timeSpentSeconds: integer('time_spent_seconds'),
+});
 
 // ============================================================================
 // LOCALES
@@ -228,6 +322,57 @@ export const questionLessonsRelations = relations(questionLessons, ({ one }) => 
   lesson: one(lessons, {
     fields: [questionLessons.lessonId],
     references: [lessons.id],
+  }),
+}));
+
+// ============================================================================
+// USER RELATIONS
+// ============================================================================
+
+export const usersRelations = relations(users, ({ many }) => ({
+  oauthAccounts: many(oauthAccounts),
+  bookmarks: many(userBookmarks),
+  examSessions: many(examSessions),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAccounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userBookmarksRelations = relations(userBookmarks, ({ one }) => ({
+  user: one(users, {
+    fields: [userBookmarks.userId],
+    references: [users.id],
+  }),
+  question: one(questions, {
+    fields: [userBookmarks.questionId],
+    references: [questions.id],
+  }),
+}));
+
+export const examSessionsRelations = relations(examSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [examSessions.userId],
+    references: [users.id],
+  }),
+  answers: many(examSessionAnswers),
+}));
+
+export const examSessionAnswersRelations = relations(examSessionAnswers, ({ one }) => ({
+  session: one(examSessions, {
+    fields: [examSessionAnswers.sessionId],
+    references: [examSessions.id],
+  }),
+  question: one(questions, {
+    fields: [examSessionAnswers.questionId],
+    references: [questions.id],
+  }),
+  category: one(categories, {
+    fields: [examSessionAnswers.categoryId],
+    references: [categories.id],
   }),
 }));
 

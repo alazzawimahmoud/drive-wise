@@ -3,17 +3,9 @@ import { db } from '../db/index.js';
 import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations, questionLessons, lessons, lessonTranslations } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import type { ApiQuestion, ApiChoice, ApiQuestionLesson } from '../types/index.js';
+import { getAssetUrl } from '../config.js';
 
 export const questionsRouter = Router();
-
-// Helper to build full asset URL
-const ASSETS_BASE_URL = 'https://storage.googleapis.com/be-on-the-road.appspot.com/files_uuidNames';
-
-function getAssetUrl(uuid: string | null, type: 'image' | 'video' = 'image'): string | null {
-  if (!uuid) return null;
-  if (type === 'video') return `https://www.youtube.com/watch?v=${uuid.replace('video-', '')}`;
-  return `${ASSETS_BASE_URL}/${uuid}`;
-}
 
 /**
  * @swagger

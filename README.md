@@ -9,12 +9,17 @@ Belgian driving license theory questions API with Vite + Express hybrid architec
 - **Region-specific** questions (Brussels, Flanders, Wallonia, National)
 - **LLM-powered rephrasing** using Claude 3.5 Sonnet
 - **Exam simulation** with authentic Belgian scoring rules
+- **OAuth authentication** (Google) for user persistence
+- **Bookmarks** - save questions for later or mark as difficult
+- **Session history** - track all exam attempts with detailed analytics
+- **Statistics & insights** - weakest categories, license probability, progress over time
 
 ## Tech Stack
 
 - **Frontend**: Vite (React-ready)
 - **Backend**: Express + TypeScript
 - **Database**: PostgreSQL + Drizzle ORM
+- **Authentication**: Passport.js + JWT (Google OAuth)
 - **LLM**: Anthropic Claude 3.5 Sonnet
 
 ## Getting Started
@@ -23,7 +28,23 @@ Belgian driving license theory questions API with Vite + Express hybrid architec
 
 - Node.js 20.19+ or 22.12+
 - PostgreSQL 14+
-- Anthropic API key (for content rephrasing)
+- Google Cloud Project with OAuth credentials
+- Anthropic API key (for content rephrasing, optional)
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Production | Secret key for JWT signing (defaults to dev secret) |
+| `ASSETS_BASE_URL` | No | Base URL for question assets/images |
+| `OAUTH_CALLBACK_URL` | No | Base URL for OAuth callbacks (default: `http://localhost:3000/api/auth`) |
+| `FRONTEND_URL` | No | Frontend URL for OAuth redirects (default: `http://localhost:5173`) |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth Client Secret |
+| `ANTHROPIC_API_KEY` | No | For LLM-powered content rephrasing |
+| `NODE_ENV` | No | `development` or `production` |
+| `PORT` | No | Server port (default: 3000) |
 
 ### Installation
 
@@ -31,9 +52,10 @@ Belgian driving license theory questions API with Vite + Express hybrid architec
 # Install dependencies
 npm install
 
-# Copy environment template
-cp .env.example .env
-# Edit .env with your database URL and API keys
+# Set environment variables (create .env file)
+# DATABASE_URL=postgresql://user:password@localhost:5432/drivewise
+# GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+# JWT_SECRET=your-production-secret
 
 # Generate and run database migrations
 npm run db:generate
@@ -76,6 +98,10 @@ npm run preview
 
 ## API Endpoints
 
+Full API documentation available at `/api/docs` (Swagger UI).
+
+### Public Endpoints
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/health` | Health check |
@@ -87,7 +113,71 @@ npm run preview
 | GET | `/api/questions/random` | Get random questions |
 | GET | `/api/exam/config` | Get exam configuration |
 | POST | `/api/exam/generate` | Generate exam questions |
-| POST | `/api/exam/score` | Calculate exam score |
+| POST | `/api/exam/score` | Calculate exam score (persists if authenticated) |
+
+### Authentication Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/auth/providers` | List available OAuth providers |
+| GET | `/api/auth/{provider}` | Initiate OAuth flow |
+| GET | `/api/auth/{provider}/callback` | OAuth callback handler |
+| GET | `/api/auth/me` | Get current user profile |
+| PATCH | `/api/auth/me` | Update user preferences |
+| POST | `/api/auth/refresh` | Refresh JWT token |
+| DELETE | `/api/auth/unlink/{provider}` | Unlink OAuth provider from account |
+
+### Authenticated Endpoints (require Bearer token)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/bookmarks` | Get user's bookmarked questions |
+| POST | `/api/bookmarks` | Bookmark a question |
+| PATCH | `/api/bookmarks/:id` | Update bookmark notes/type |
+| DELETE | `/api/bookmarks/:id` | Remove a bookmark |
+| GET | `/api/bookmarks/check/:questionId` | Check if question is bookmarked |
+| GET | `/api/exam/history` | Get exam session history |
+| GET | `/api/exam/session/:id` | Get detailed session results |
+| GET | `/api/stats/overview` | Get overall performance stats |
+| GET | `/api/stats/categories` | Get performance by category |
+| GET | `/api/stats/progress` | Get progress over time |
+| GET | `/api/stats/difficult-questions` | Get most missed questions |
+| GET | `/api/stats/ready-for-exam` | Get exam readiness assessment |
+
+## OAuth Authentication
+
+The API uses **Passport.js** for a flexible, extensible authentication system supporting multiple OAuth providers.
+
+### Discover Available Providers
+
+```bash
+GET /api/auth/providers
+# Returns list of configured providers with their auth URLs
+```
+
+### Google OAuth Setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project → **APIs & Services > Credentials**
+3. Create **OAuth 2.0 Client ID** (Web application)
+4. Add redirect URI: `http://localhost:3000/api/auth/google/callback`
+5. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables
+
+### Frontend Integration
+
+```javascript
+// 1. Redirect user to OAuth provider
+window.location.href = '/api/auth/google';
+
+// 2. Handle callback on your frontend route /auth/callback
+const token = new URLSearchParams(window.location.search).get('token');
+localStorage.setItem('token', token);
+
+// 3. Make authenticated requests
+fetch('/api/bookmarks', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
 
 ## Belgian Driving Theory Exam
 
@@ -118,8 +208,19 @@ npm install -D @vitejs/plugin-react
 drive-wise/
 ├── src/                    # Frontend (Vite/React)
 ├── server/                 # Backend (Express API)
+│   ├── auth/               # Authentication
+│   │   └── passport.ts     # Passport.js config & OAuth strategies
 │   ├── db/                 # Drizzle schema & migrations
+│   │   ├── schema.ts       # Database schema (users, oauth_accounts, bookmarks, etc.)
+│   │   └── migrations/     # SQL migrations
+│   ├── middleware/         # Express middleware
+│   │   └── auth.ts         # JWT verification middleware
 │   ├── routes/             # API routes
+│   │   ├── auth.ts         # Multi-provider OAuth endpoints
+│   │   ├── bookmarks.ts    # Bookmark management
+│   │   ├── exam.ts         # Exam generation & scoring
+│   │   ├── stats.ts        # Performance statistics
+│   │   └── ...             # Other routes
 │   └── types/              # TypeScript types
 ├── scripts/                # Data processing scripts
 ├── data/                   # Processed data files

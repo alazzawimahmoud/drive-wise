@@ -21,6 +21,11 @@ export type QuestionTranslation = InferSelectModel<typeof schema.questionTransla
 export type Choice = InferSelectModel<typeof schema.choices>;
 export type ChoiceTranslation = InferSelectModel<typeof schema.choiceTranslations>;
 export type QuestionLesson = InferSelectModel<typeof schema.questionLessons>;
+export type User = InferSelectModel<typeof schema.users>;
+export type OAuthAccount = InferSelectModel<typeof schema.oauthAccounts>;
+export type UserBookmark = InferSelectModel<typeof schema.userBookmarks>;
+export type ExamSession = InferSelectModel<typeof schema.examSessions>;
+export type ExamSessionAnswer = InferSelectModel<typeof schema.examSessionAnswers>;
 
 // ============================================================================
 // INFERRED INSERT TYPES
@@ -38,6 +43,11 @@ export type NewQuestionTranslation = InferInsertModel<typeof schema.questionTran
 export type NewChoice = InferInsertModel<typeof schema.choices>;
 export type NewChoiceTranslation = InferInsertModel<typeof schema.choiceTranslations>;
 export type NewQuestionLesson = InferInsertModel<typeof schema.questionLessons>;
+export type NewUser = InferInsertModel<typeof schema.users>;
+export type NewOAuthAccount = InferInsertModel<typeof schema.oauthAccounts>;
+export type NewUserBookmark = InferInsertModel<typeof schema.userBookmarks>;
+export type NewExamSession = InferInsertModel<typeof schema.examSessions>;
+export type NewExamSessionAnswer = InferInsertModel<typeof schema.examSessionAnswers>;
 
 // ============================================================================
 // ENUM TYPES
@@ -228,4 +238,161 @@ export interface ApiQuestionLesson {
   number: number;
   slug: string;
   title: string | null;
+}
+
+// ============================================================================
+// USER & AUTH API TYPES
+// ============================================================================
+
+/** User profile in API response */
+export interface ApiUser {
+  id: number;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  preferredLocale: string;
+  preferredRegion: string | null;
+  createdAt: Date;
+}
+
+/** Auth response */
+export interface AuthResponse {
+  token: string;
+  user: ApiUser;
+  isNewUser: boolean;
+}
+
+// ============================================================================
+// BOOKMARK API TYPES
+// ============================================================================
+
+export type BookmarkType = 'saved' | 'difficult' | 'review';
+
+/** Bookmark in API response */
+export interface ApiBookmark {
+  id: number;
+  bookmarkType: BookmarkType;
+  notes: string | null;
+  createdAt: Date;
+  question: {
+    id: number;
+    originalId: string;
+    answerType: string;
+    isMajorFault: boolean;
+    questionText: string | null;
+    category: {
+      slug: string | null;
+      title: string | null;
+    };
+    imageUrl: string | null;
+  };
+}
+
+// ============================================================================
+// EXAM SESSION API TYPES
+// ============================================================================
+
+export type SessionType = 'exam' | 'practice' | 'review';
+
+/** Exam session in API response */
+export interface ApiExamSession {
+  id: number;
+  sessionType: SessionType;
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  majorFaults: number;
+  minorFaults: number;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  percentage: number;
+  timeTakenSeconds: number | null;
+  startedAt: Date;
+  completedAt: Date;
+}
+
+/** Session answer in API response */
+export interface ApiSessionAnswer {
+  questionId: number;
+  submittedAnswer: unknown;
+  correctAnswer: unknown;
+  isCorrect: boolean;
+  isMajorFault: boolean;
+  questionText: string | null;
+  explanation: string | null;
+  category: {
+    slug: string | null;
+    title: string | null;
+  };
+}
+
+// ============================================================================
+// STATISTICS API TYPES
+// ============================================================================
+
+/** Statistics overview */
+export interface StatsOverview {
+  totalSessions: number;
+  passedSessions: number;
+  passRate: number;
+  averageScore: number;
+  averagePercentage: number;
+  totalQuestionsAnswered: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  overallAccuracy: number;
+  totalMajorFaults: number;
+  bestScore: number;
+  worstScore: number;
+  licenseProbability: number;
+  currentStreak: number;
+  improvement: number | null;
+  recentTrend: {
+    score: number;
+    percentage: number;
+    passed: boolean;
+    completedAt: Date;
+  }[];
+}
+
+/** Category statistics */
+export interface CategoryStats {
+  categoryId: number;
+  slug: string | null;
+  title: string | null;
+  totalAnswered: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  accuracy: number;
+  majorFaults: number;
+}
+
+/** Difficult question stats */
+export interface DifficultQuestion {
+  questionId: number;
+  questionText: string | null;
+  category: {
+    slug: string | null;
+    title: string | null;
+  };
+  timesAnswered: number;
+  timesCorrect: number;
+  timesIncorrect: number;
+  accuracy: number;
+  isMajorFault: boolean;
+}
+
+/** Exam readiness assessment */
+export interface ExamReadiness {
+  ready: boolean;
+  confidence: number;
+  recommendations: string[];
+  metrics: {
+    totalRecentExams: number;
+    recentPassRate: number;
+    consecutivePasses: number;
+    averagePercentage: number;
+    weakCategoryCount: number;
+  };
 }

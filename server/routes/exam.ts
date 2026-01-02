@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations, questionLessons, lessons, lessonTranslations } from '../db/schema.js';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations, questionLessons, lessons, lessonTranslations, examSessions, examSessionAnswers } from '../db/schema.js';
+import { eq, and, sql, inArray, desc } from 'drizzle-orm';
 import type { ExamConfig, ExamResult, AnswerSubmission, ApiQuestionLesson } from '../types/index.js';
+import { optionalAuth, requireAuth } from '../middleware/auth.js';
+import { getAssetUrl } from '../config.js';
 
 export const examRouter = Router();
 
@@ -15,13 +17,6 @@ const EXAM_CONFIG: ExamConfig = {
   maxScore: 50,
   timeLimitMinutes: 90,
 };
-
-const ASSETS_BASE_URL = 'https://storage.googleapis.com/be-on-the-road.appspot.com/files_uuidNames';
-
-function getAssetUrl(uuid: string | null): string | null {
-  if (!uuid) return null;
-  return `${ASSETS_BASE_URL}/${uuid}`;
-}
 
 /**
  * @swagger
@@ -200,8 +195,11 @@ examRouter.post('/generate', async (req, res) => {
  * /api/exam/score:
  *   post:
  *     summary: Score an exam
- *     description: Calculate the score for submitted exam answers using Belgian scoring rules
+ *     description: Calculate the score for submitted exam answers using Belgian scoring rules. If authenticated, the session is persisted for history and statistics.
  *     tags: [Exam]
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     requestBody:
  *       required: true
  *       content:
@@ -228,6 +226,17 @@ examRouter.post('/generate', async (req, res) => {
  *                         - type: array
  *                           items:
  *                             type: integer
+ *               sessionType:
+ *                 type: string
+ *                 enum: [exam, practice, review]
+ *                 default: exam
+ *               startedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: When the exam was started (for time tracking)
+ *               timeTakenSeconds:
+ *                 type: integer
+ *                 description: Total time taken in seconds
  *     responses:
  *       200:
  *         description: Exam score and detailed results
@@ -238,6 +247,9 @@ examRouter.post('/generate', async (req, res) => {
  *               properties:
  *                 result:
  *                   $ref: '#/components/schemas/ExamResult'
+ *                 sessionId:
+ *                   type: integer
+ *                   description: ID of persisted session (only if authenticated)
  *                 details:
  *                   type: array
  *                   items:
@@ -262,15 +274,20 @@ examRouter.post('/generate', async (req, res) => {
  *       400:
  *         description: Invalid request body
  */
-examRouter.post('/score', async (req, res) => {
+examRouter.post('/score', optionalAuth, async (req, res) => {
   try {
-    const { answers } = req.body as { answers: AnswerSubmission[] };
+    const { answers, sessionType, startedAt, timeTakenSeconds } = req.body as { 
+      answers: AnswerSubmission[]; 
+      sessionType?: string;
+      startedAt?: string;
+      timeTakenSeconds?: number;
+    };
 
     if (!answers || !Array.isArray(answers)) {
       return res.status(400).json({ error: 'answers array is required' });
     }
 
-    // Fetch correct answers for all submitted questions
+    // Fetch correct answers and category IDs for all submitted questions
     const questionIds = answers.map(a => a.questionId);
     
     const correctAnswers = await db
@@ -278,6 +295,7 @@ examRouter.post('/score', async (req, res) => {
         id: questions.id,
         answer: questions.answer,
         isMajorFault: questions.isMajorFault,
+        categoryId: questions.categoryId,
       })
       .from(questions)
       .where(inArray(questions.id, questionIds));
@@ -310,6 +328,7 @@ examRouter.post('/score', async (req, res) => {
 
       return {
         questionId: submitted.questionId,
+        categoryId: question.categoryId,
         submitted: submitted.answer,
         correct: question.answer,
         isCorrect,
@@ -321,6 +340,7 @@ examRouter.post('/score', async (req, res) => {
     const penalty = (majorFaults * EXAM_CONFIG.majorFaultPenalty) + (minorFaults * EXAM_CONFIG.minorFaultPenalty);
     const score = Math.max(0, EXAM_CONFIG.maxScore - penalty);
     const passed = correct >= EXAM_CONFIG.passThreshold;
+    const percentage = Math.round((correct / answers.length) * 100);
 
     const result: ExamResult = {
       totalQuestions: answers.length,
@@ -332,12 +352,275 @@ examRouter.post('/score', async (req, res) => {
       maxScore: EXAM_CONFIG.maxScore,
       passed,
       passThreshold: EXAM_CONFIG.passThreshold,
-      percentage: Math.round((correct / answers.length) * 100),
+      percentage,
     };
 
-    res.json({ result, details });
+    let sessionId: number | undefined;
+
+    // Persist session if user is authenticated
+    if (req.user) {
+      const [session] = await db
+        .insert(examSessions)
+        .values({
+          userId: req.user.id,
+          sessionType: sessionType || 'exam',
+          totalQuestions: answers.length,
+          correctAnswers: correct,
+          incorrectAnswers: incorrect,
+          majorFaults,
+          minorFaults,
+          score,
+          maxScore: EXAM_CONFIG.maxScore,
+          passed,
+          percentage,
+          timeTakenSeconds: timeTakenSeconds || null,
+          startedAt: startedAt ? new Date(startedAt) : new Date(),
+        })
+        .returning();
+
+      sessionId = session.id;
+
+      // Persist individual answers for detailed analytics
+      const answerRecords = details
+        .filter((d): d is typeof d & { categoryId: number; isCorrect: boolean; isMajorFault: boolean } => 
+          'categoryId' in d && 
+          d.categoryId !== undefined && 
+          d.isCorrect !== undefined && 
+          d.isMajorFault !== undefined
+        )
+        .map(d => ({
+          sessionId: session.id,
+          questionId: d.questionId,
+          categoryId: d.categoryId,
+          submittedAnswer: d.submitted,
+          correctAnswer: d.correct,
+          isCorrect: d.isCorrect,
+          isMajorFault: d.isMajorFault,
+        }));
+
+      if (answerRecords.length > 0) {
+        await db.insert(examSessionAnswers).values(answerRecords);
+      }
+    }
+
+    res.json({ result, sessionId, details });
   } catch (error) {
     console.error('Error scoring exam:', error);
     res.status(500).json({ error: 'Failed to score exam' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/exam/history:
+ *   get:
+ *     summary: Get exam history
+ *     description: Returns the authenticated user's exam session history
+ *     tags: [Exam]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: limit
+ *         in: query
+ *         description: Maximum number of sessions to return
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *       - name: offset
+ *         in: query
+ *         description: Number of sessions to skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *       - name: sessionType
+ *         in: query
+ *         description: Filter by session type
+ *         schema:
+ *           type: string
+ *           enum: [exam, practice, review]
+ *     responses:
+ *       200:
+ *         description: List of exam sessions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ExamSession'
+ *                 total:
+ *                   type: integer
+ *       401:
+ *         description: Not authenticated
+ */
+examRouter.get('/history', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const sessionType = req.query.sessionType as string | undefined;
+
+    let conditions = eq(examSessions.userId, userId);
+    if (sessionType && ['exam', 'practice', 'review'].includes(sessionType)) {
+      conditions = and(conditions, eq(examSessions.sessionType, sessionType))!;
+    }
+
+    const sessions = await db
+      .select()
+      .from(examSessions)
+      .where(conditions)
+      .orderBy(desc(examSessions.completedAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Get total count
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(examSessions)
+      .where(conditions);
+
+    res.json({
+      sessions: sessions.map(s => ({
+        id: s.id,
+        sessionType: s.sessionType,
+        totalQuestions: s.totalQuestions,
+        correctAnswers: s.correctAnswers,
+        incorrectAnswers: s.incorrectAnswers,
+        majorFaults: s.majorFaults,
+        minorFaults: s.minorFaults,
+        score: s.score,
+        maxScore: s.maxScore,
+        passed: s.passed,
+        percentage: s.percentage,
+        timeTakenSeconds: s.timeTakenSeconds,
+        startedAt: s.startedAt,
+        completedAt: s.completedAt,
+      })),
+      total: count,
+    });
+  } catch (error) {
+    console.error('Error fetching exam history:', error);
+    res.status(500).json({ error: 'Failed to fetch exam history' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/exam/session/{id}:
+ *   get:
+ *     summary: Get exam session details
+ *     description: Returns detailed information about a specific exam session including all answers
+ *     tags: [Exam]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Session ID
+ *         schema:
+ *           type: integer
+ *       - $ref: '#/components/parameters/locale'
+ *     responses:
+ *       200:
+ *         description: Session details with answers
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Session not found
+ */
+examRouter.get('/session/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const sessionId = parseInt(req.params.id);
+    const locale = (req.query.locale as string) || 'nl-BE';
+
+    if (isNaN(sessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID' });
+    }
+
+    // Fetch session (verify ownership)
+    const [session] = await db
+      .select()
+      .from(examSessions)
+      .where(and(
+        eq(examSessions.id, sessionId),
+        eq(examSessions.userId, userId)
+      ))
+      .limit(1);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Fetch answers with question details
+    const answers = await db
+      .select({
+        questionId: examSessionAnswers.questionId,
+        submittedAnswer: examSessionAnswers.submittedAnswer,
+        correctAnswer: examSessionAnswers.correctAnswer,
+        isCorrect: examSessionAnswers.isCorrect,
+        isMajorFault: examSessionAnswers.isMajorFault,
+        questionText: questionTranslations.questionText,
+        explanation: questionTranslations.explanation,
+        categorySlug: categories.slug,
+        categoryTitle: categoryTranslations.title,
+      })
+      .from(examSessionAnswers)
+      .innerJoin(questions, eq(questions.id, examSessionAnswers.questionId))
+      .leftJoin(
+        questionTranslations,
+        and(
+          eq(questionTranslations.questionId, questions.id),
+          eq(questionTranslations.locale, locale)
+        )
+      )
+      .leftJoin(categories, eq(categories.id, examSessionAnswers.categoryId))
+      .leftJoin(
+        categoryTranslations,
+        and(
+          eq(categoryTranslations.categoryId, categories.id),
+          eq(categoryTranslations.locale, locale)
+        )
+      )
+      .where(eq(examSessionAnswers.sessionId, sessionId));
+
+    res.json({
+      session: {
+        id: session.id,
+        sessionType: session.sessionType,
+        totalQuestions: session.totalQuestions,
+        correctAnswers: session.correctAnswers,
+        incorrectAnswers: session.incorrectAnswers,
+        majorFaults: session.majorFaults,
+        minorFaults: session.minorFaults,
+        score: session.score,
+        maxScore: session.maxScore,
+        passed: session.passed,
+        percentage: session.percentage,
+        timeTakenSeconds: session.timeTakenSeconds,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+      },
+      answers: answers.map(a => ({
+        questionId: a.questionId,
+        submittedAnswer: a.submittedAnswer,
+        correctAnswer: a.correctAnswer,
+        isCorrect: a.isCorrect,
+        isMajorFault: a.isMajorFault,
+        questionText: a.questionText,
+        explanation: a.explanation,
+        category: {
+          slug: a.categorySlug,
+          title: a.categoryTitle,
+        },
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching session details:', error);
+    res.status(500).json({ error: 'Failed to fetch session details' });
   }
 });

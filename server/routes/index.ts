@@ -4,6 +4,9 @@ import { categoriesRouter } from './categories.js';
 import { lessonsRouter } from './lessons.js';
 import { questionsRouter } from './questions.js';
 import { examRouter } from './exam.js';
+import { authRouter } from './auth.js';
+import { bookmarksRouter } from './bookmarks.js';
+import { statsRouter } from './stats.js';
 import { swaggerSpec } from '../swagger.js';
 
 export const router = Router();
@@ -30,10 +33,13 @@ router.get('/health', (_req, res) => {
 });
 
 // Mount route modules
+router.use('/auth', authRouter);
 router.use('/categories', categoriesRouter);
 router.use('/lessons', lessonsRouter);
 router.use('/questions', questionsRouter);
 router.use('/exam', examRouter);
+router.use('/bookmarks', bookmarksRouter);
+router.use('/stats', statsRouter);
 
 /**
  * @swagger

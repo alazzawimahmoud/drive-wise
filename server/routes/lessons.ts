@@ -3,16 +3,9 @@ import { db } from '../db/index.js';
 import { lessons, lessonTranslations, questionLessons, questions, questionTranslations, choices, choiceTranslations, assets, regions, categories, categoryTranslations } from '../db/schema.js';
 import { eq, and, sql, count } from 'drizzle-orm';
 import type { ApiLesson, ApiQuestion, ApiChoice } from '../types/index.js';
+import { getAssetUrl } from '../config.js';
 
 export const lessonsRouter = Router();
-
-// Helper to build full asset URL
-const ASSETS_BASE_URL = 'https://storage.googleapis.com/be-on-the-road.appspot.com/files_uuidNames';
-
-function getAssetUrl(uuid: string | null): string | null {
-  if (!uuid) return null;
-  return `${ASSETS_BASE_URL}/${uuid}`;
-}
 
 /**
  * @swagger
