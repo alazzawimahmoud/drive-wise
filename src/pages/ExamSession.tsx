@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMachine } from '@xstate/react';
 import { examMachine } from '../store/examMachine';
 import { QuestionCard } from '../components/QuestionCard';
@@ -6,6 +6,7 @@ import api from '../lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ExamResult {
   totalQuestions: number;
@@ -25,6 +26,7 @@ export const ExamSession = () => {
   const startTimeRef = useRef<Date>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [results, setResults] = useState<ExamResult | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const { data: examData, isLoading: isExamLoading } = useQuery({
     queryKey: ['exam-generate'],
@@ -256,6 +258,15 @@ export const ExamSession = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-3 md:mb-6 px-2 md:px-4">
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="p-1.5 md:p-2 hover:bg-slate-100 rounded-lg transition-colors mr-1"
+              aria-label="Go to homepage"
+            >
+              <svg className="w-4 h-4 md:w-5 md:h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </button>
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Question</span>
             <span className="text-lg md:text-xl font-black text-slate-900">{currentQuestionIndex + 1}</span>
             <span className="text-slate-300 font-bold">/</span>
@@ -305,6 +316,62 @@ export const ExamSession = () => {
           )}
         </div>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <AnimatePresence>
+        {showExitModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowExitModal(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            />
+            
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-6 md:p-8">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full">
+                  <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                
+                <h2 className="text-xl md:text-2xl font-black text-slate-900 text-center mb-2">
+                  Exit Exam?
+                </h2>
+                
+                <p className="text-slate-600 text-center mb-6 text-sm md:text-base">
+                  Are you sure you want to exit the exam? Your progress will not be saved.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setShowExitModal(false)}
+                    className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all text-sm md:text-base"
+                  >
+                    Continue Exam
+                  </button>
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="flex-1 px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-lg shadow-rose-200 transition-all text-sm md:text-base"
+                  >
+                    Exit to Homepage
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
