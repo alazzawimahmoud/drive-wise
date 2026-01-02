@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { users, examSessions, examSessionAnswers } from '../db/schema.js';
+import { users, examSessions } from '../db/schema.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { eq, sql, desc } from 'drizzle-orm';
 
@@ -24,7 +24,7 @@ adminRouter.use(requireAdmin);
  *       403:
  *         description: Admin access required
  */
-adminRouter.get('/users', async (req, res) => {
+adminRouter.get('/users', async (_req, res) => {
   try {
     // Get all users
     const allUsers = await db
@@ -129,7 +129,7 @@ adminRouter.get('/users', async (req, res) => {
  *       403:
  *         description: Admin access required
  */
-adminRouter.get('/stats', async (req, res) => {
+adminRouter.get('/stats', async (_req, res) => {
   try {
     // Total users
     const totalUsers = await db
