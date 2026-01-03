@@ -23,6 +23,21 @@ interface QuestionCardProps {
   selectedAnswer: any;
   onAnswer: (answer: any) => void;
   showFeedback?: boolean;
+  // Header props
+  user?: {
+    avatarUrl?: string | null;
+    displayName?: string | null;
+  } | null;
+  currentQuestionIndex: number;
+  totalQuestions: number;
+  timeLeft: number;
+  onExitClick: () => void;
+  // Footer props
+  onPrevious: () => void;
+  onNext: () => void;
+  onFinish: () => void;
+  isFirstQuestion: boolean;
+  isLastQuestion: boolean;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -30,7 +45,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   selectedAnswer,
   onAnswer,
   showFeedback = false,
+  user,
+  currentQuestionIndex,
+  totalQuestions,
+  timeLeft,
+  onExitClick,
+  onPrevious,
+  onNext,
+  onFinish,
+  isFirstQuestion,
+  isLastQuestion,
 }) => {
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   const isCorrect = React.useMemo(() => {
     if (selectedAnswer === undefined || selectedAnswer === null) return false;
     if (question.answer === undefined || question.answer === null) return false;
@@ -40,7 +70,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   }, [selectedAnswer, question.answer]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
       <AnimatePresence mode="wait">
         <motion.div
           key={question.id}
@@ -49,7 +79,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
           className={clsx(
-            "bg-white rounded-2xl md:rounded-3xl shadow-xl overflow-hidden border-2 transition-colors",
+            "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
             showFeedback && selectedAnswer !== undefined
               ? isCorrect
                 ? "border-emerald-500 shadow-emerald-100"
@@ -57,15 +87,54 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               : "border-slate-100"
           )}
         >
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex-shrink-0 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onExitClick}
+                className="hover:opacity-80 transition-opacity mr-1"
+                aria-label="Go to homepage"
+              >
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={user.displayName || 'User'}
+                    className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-slate-200 shadow-sm object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 border-2 border-slate-200 shadow-sm flex items-center justify-center">
+                    <span className="text-xs md:text-sm font-bold text-white">
+                      {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                )}
+              </button>
+              <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Question</span>
+              <span className="text-base md:text-lg font-black text-slate-900">{currentQuestionIndex + 1}</span>
+              <span className="text-slate-300 font-bold">/</span>
+              <span className="text-sm md:text-base font-bold text-slate-400">{totalQuestions}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
+              <span className={clsx(
+                "text-sm md:text-base font-mono font-bold",
+                timeLeft < 300 ? "text-rose-600" : "text-slate-700"
+              )}>
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+          </div>
+
           {question.imageUrl && (
-            <div className="aspect-[9/7] w-full bg-slate-100 relative">
+            <div className="w-full aspect-[4/3] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0">
               <img
                 src={question.imageUrl}
                 alt="Question scenario"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               {question.isMajorFault && (
-                <div className="absolute top-2 md:top-4 right-2 md:right-4 bg-rose-600 text-white px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-lg">
+                <div className="absolute top-2 right-2 bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">
                   Major Fault
                 </div>
               )}
@@ -84,16 +153,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       className={clsx(
-                        "w-20 h-20 rounded-full flex items-center justify-center shadow-2xl",
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl",
                         isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
                       )}
                     >
                       {isCorrect ? (
-                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
-                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       )}
@@ -104,14 +173,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </div>
           )}
 
-          <div className="p-3 md:p-8">
-            <h2 className="text-base md:text-xl font-bold text-slate-900 mb-3 md:mb-8 leading-tight">
+          <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0">
+            <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
               {question.questionText}
             </h2>
 
-            <div className="space-y-2 md:space-y-4">
+            <div className="space-y-2 md:space-y-3">
               {question.answerType === 'INPUT' ? (
-                <div className="space-y-4">
+                <div className="space-y-2 md:space-y-3">
                   <div className="relative">
                     <input
                       type="text"
@@ -122,7 +191,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       placeholder="Typ hier je antwoord..."
                       disabled={showFeedback}
                       className={clsx(
-                        "w-full p-4 md:p-6 text-xl md:text-2xl font-bold rounded-2xl border-4 transition-all text-center outline-none",
+                        "w-full p-3 md:p-4 text-lg md:text-xl font-bold rounded-xl md:rounded-2xl border-2 md:border-4 transition-all text-center outline-none",
                         showFeedback
                           ? isCorrect
                             ? "border-emerald-500 bg-emerald-50 text-emerald-900"
@@ -131,15 +200,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       )}
                     />
                     {showFeedback && !isCorrect && (
-                      <div className="mt-2 md:mt-4 p-3 md:p-4 bg-emerald-100 rounded-lg md:rounded-xl border border-emerald-200 text-center">
-                        <span className="text-emerald-800 font-bold uppercase text-[10px] md:text-xs tracking-wider block mb-1">Correct Antwoord</span>
-                        <span className="text-emerald-900 text-lg md:text-xl font-black">{question.answer}</span>
+                      <div className="mt-2 p-2 md:p-3 bg-emerald-100 rounded-lg border border-emerald-200 text-center">
+                        <span className="text-emerald-800 font-bold uppercase text-[10px] tracking-wider block mb-1">Correct Antwoord</span>
+                        <span className="text-emerald-900 text-base md:text-lg font-black">{question.answer}</span>
                       </div>
                     )}
                   </div>
                 </div>
               ) : question.answerType === 'YES_NO' ? (
-                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
                   {question.choices.map((choice) => {
                     const isSelected = selectedAnswer === choice.position;
                     const isChoiceCorrect = question.answer === choice.position;
@@ -149,7 +218,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         key={choice.position}
                         onClick={() => !showFeedback && onAnswer(choice.position)}
                         className={clsx(
-                          "p-3 md:p-8 rounded-2xl md:rounded-3xl text-center transition-all border-4 flex flex-col items-center justify-center gap-1 md:gap-3",
+                          "p-3 md:p-4 lg:p-6 rounded-xl md:rounded-2xl text-center transition-all border-2 md:border-4 flex flex-col items-center justify-center gap-1",
                           isSelected
                             ? showFeedback
                               ? isCorrect ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-rose-500 bg-rose-50 text-rose-900"
@@ -160,14 +229,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                           showFeedback && "cursor-default"
                         )}
                       >
-                        <span className="text-lg md:text-3xl font-black">{choice.text}</span>
+                        <span className="text-base md:text-xl lg:text-2xl font-black">{choice.text}</span>
                       </button>
                     );
                   })}
                 </div>
               ) : question.answerType === 'ORDER' ? (
-                <div className="space-y-2 md:space-y-4">
-                  <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {question.choices.map((choice) => {
                       const orderIndex = (selectedAnswer as number[] || []).indexOf(choice.position);
                       const isSelected = orderIndex !== -1;
@@ -187,18 +256,18 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                             onAnswer(newOrder);
                           }}
                           className={clsx(
-                            "relative w-32 h-32 rounded-2xl border-4 transition-all overflow-hidden bg-white shadow-sm",
+                            "relative w-24 h-24 md:w-28 md:h-28 rounded-xl border-2 md:border-4 transition-all overflow-hidden bg-white shadow-sm",
                             isSelected
-                              ? "border-indigo-600 ring-4 ring-indigo-100"
+                              ? "border-indigo-600 ring-2 md:ring-4 ring-indigo-100"
                               : "border-slate-100 hover:border-slate-200"
                           )}
                         >
                           {choice.imageUrl && (
-                            <img src={choice.imageUrl} alt="" className="w-full h-full object-contain p-2" />
+                            <img src={choice.imageUrl} alt="" className="w-full h-full object-contain p-1 md:p-2" />
                           )}
                           {isSelected && (
                             <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center">
-                              <span className="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl font-black shadow-lg">
+                              <span className="bg-indigo-600 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base md:text-xl font-black shadow-lg">
                                 {orderIndex + 1}
                               </span>
                             </div>
@@ -208,11 +277,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     })}
                   </div>
                   {showFeedback && (
-                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                      <span className="text-emerald-800 font-bold uppercase text-xs tracking-wider block mb-2">Juiste Volgorde</span>
+                    <div className="p-2 md:p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
+                      <span className="text-emerald-800 font-bold uppercase text-[10px] tracking-wider block mb-1 md:mb-2">Juiste Volgorde</span>
                       <div className="flex justify-center gap-2">
                         {(question.answer as number[]).map((pos, idx) => (
-                          <div key={idx} className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-sm">
+                          <div key={idx} className="w-7 h-7 md:w-8 md:h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-xs md:text-sm">
                             {pos + 1}
                           </div>
                         ))}
@@ -228,7 +297,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   if (hasImageChoices) {
                     // Image-based SINGLE_CHOICE layout (grid of images)
                     return (
-                      <div className="grid grid-cols-2 gap-2 md:gap-4">
+                      <div className="grid grid-cols-2 gap-2 md:gap-3">
                         {question.choices.map((choice) => {
                           const isSelected = selectedAnswer === choice.position;
                           const isChoiceCorrect = choice.position === question.answer;
@@ -238,22 +307,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                               key={choice.position}
                               onClick={() => !showFeedback && onAnswer(choice.position)}
                               className={clsx(
-                                "relative aspect-square rounded-xl md:rounded-2xl border-4 transition-all overflow-hidden bg-white shadow-sm",
+                                "relative aspect-square rounded-lg md:rounded-xl border-2 md:border-4 transition-all overflow-hidden bg-white shadow-sm",
                                 isSelected
                                   ? showFeedback
                                     ? isCorrect
-                                      ? "border-emerald-500 ring-4 ring-emerald-100"
-                                      : "border-rose-500 ring-4 ring-rose-100"
-                                    : "border-indigo-600 ring-4 ring-indigo-100"
+                                      ? "border-emerald-500 ring-2 md:ring-4 ring-emerald-100"
+                                      : "border-rose-500 ring-2 md:ring-4 ring-rose-100"
+                                    : "border-indigo-600 ring-2 md:ring-4 ring-indigo-100"
                                   : showFeedback && isChoiceCorrect
-                                    ? "border-emerald-500 ring-4 ring-emerald-100"
+                                    ? "border-emerald-500 ring-2 md:ring-4 ring-emerald-100"
                                     : "border-slate-100 hover:border-slate-200 hover:shadow-md",
                                 showFeedback && "cursor-default"
                               )}
                             >
                               {/* Letter badge */}
                               <div className={clsx(
-                                "absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 shadow-md transition-colors",
+                                "absolute top-2 left-2 w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-bold text-xs z-10 shadow-md transition-colors",
                                 isSelected
                                   ? showFeedback
                                     ? isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
@@ -270,11 +339,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                                 <img 
                                   src={choice.imageUrl} 
                                   alt={`Choice ${String.fromCharCode(65 + choice.position)}`}
-                                  className="w-full h-full object-contain p-4"
+                                  className="w-full h-full object-contain p-2 md:p-3"
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center p-4">
-                                  <span className="font-medium text-slate-700 text-center">{choice.text}</span>
+                                <div className="w-full h-full flex items-center justify-center p-2 md:p-3">
+                                  <span className="font-medium text-xs md:text-sm text-slate-700 text-center">{choice.text}</span>
                                 </div>
                               )}
                               
@@ -285,15 +354,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                                   isChoiceCorrect ? "bg-emerald-500/10" : "bg-rose-500/10"
                                 )}>
                                   <div className={clsx(
-                                    "w-12 h-12 rounded-full flex items-center justify-center shadow-lg",
+                                    "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shadow-lg",
                                     isChoiceCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
                                   )}>
                                     {isChoiceCorrect ? (
-                                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                       </svg>
                                     ) : (
-                                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                                       </svg>
                                     )}
@@ -307,7 +376,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     );
                   }
                   
-                  // Standard text-based SINGLE_CHOICE layout (list)
+                    // Standard text-based SINGLE_CHOICE layout (list)
                   return question.choices.map((choice) => {
                     const isSelected = selectedAnswer === choice.position;
                     const isChoiceCorrect = choice.position === question.answer;
@@ -317,7 +386,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         key={choice.position}
                         onClick={() => !showFeedback && onAnswer(choice.position)}
                         className={clsx(
-                          "w-full p-2.5 md:p-4 rounded-xl md:rounded-2xl text-left transition-all border-2 flex items-center gap-2 md:gap-4 relative overflow-hidden",
+                          "w-full p-2 md:p-3 rounded-lg md:rounded-xl text-left transition-all border-2 flex items-center gap-2 md:gap-3 relative overflow-hidden",
                           isSelected
                             ? showFeedback
                               ? isCorrect
@@ -331,7 +400,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         )}
                       >
                         <span className={clsx(
-                          "w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm shrink-0 transition-colors",
+                          "w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-colors",
                           isSelected
                             ? showFeedback
                               ? isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
@@ -342,7 +411,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         )}>
                           {String.fromCharCode(65 + choice.position)}
                         </span>
-                        <span className="text-sm md:text-base font-medium">{choice.text}</span>
+                        <span className="text-xs md:text-sm font-medium">{choice.text}</span>
                         
                         {showFeedback && (isSelected || isChoiceCorrect) && (
                           <div className="ml-auto">
@@ -358,6 +427,33 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 })()
               )}
             </div>
+          </div>
+
+          {/* Footer Navigation */}
+          <div className="px-3 md:px-4 pt-2 md:pt-3 pb-3 md:pb-4 flex items-center justify-between flex-shrink-0 border-t border-slate-100">
+            <button
+              onClick={onPrevious}
+              disabled={isFirstQuestion}
+              className="px-4 md:px-5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-all"
+            >
+              Previous
+            </button>
+
+            {isLastQuestion ? (
+              <button
+                onClick={onFinish}
+                className="px-5 md:px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-200 transition-all"
+              >
+                Finish Exam
+              </button>
+            ) : (
+              <button
+                onClick={onNext}
+                className="px-5 md:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 transition-all"
+              >
+                Next Question
+              </button>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>

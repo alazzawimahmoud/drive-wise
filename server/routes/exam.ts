@@ -9,14 +9,26 @@ import { getAssetUrl } from '../config.js';
 export const examRouter = Router();
 
 // Belgian driving theory exam configuration
-const EXAM_CONFIG: ExamConfig = {
-  totalQuestions: 50,
-  passThreshold: 41,
-  majorFaultPenalty: 5,
-  minorFaultPenalty: 1,
-  maxScore: 50,
-  timeLimitMinutes: 90,
-};
+// In development: 10 questions, 1 minute
+// In production: 50 questions, 90 minutes
+const isDev = process.env.NODE_ENV !== 'production';
+const EXAM_CONFIG: ExamConfig = isDev
+  ? {
+      totalQuestions: 10,
+      passThreshold: 8, // 80% of 10 = 8
+      majorFaultPenalty: 5,
+      minorFaultPenalty: 1,
+      maxScore: 10,
+      timeLimitMinutes: 1,
+    }
+  : {
+      totalQuestions: 50,
+      passThreshold: 41,
+      majorFaultPenalty: 5,
+      minorFaultPenalty: 1,
+      maxScore: 50,
+      timeLimitMinutes: 90,
+    };
 
 /**
  * @swagger
