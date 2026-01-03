@@ -71,24 +71,18 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
   return (
     <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={question.id}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className={clsx(
-            "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
-            showFeedback && selectedAnswer !== undefined
-              ? isCorrect
-                ? "border-emerald-500 shadow-emerald-100"
-                : "border-rose-500 shadow-rose-100"
-              : "border-slate-100"
-          )}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex-shrink-0 border-b border-slate-100">
+      <div
+        className={clsx(
+          "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
+          showFeedback && selectedAnswer !== undefined
+            ? isCorrect
+              ? "border-emerald-500 shadow-emerald-100"
+              : "border-rose-500 shadow-rose-100"
+            : "border-slate-100"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex-shrink-0 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <button
                 onClick={onExitClick}
@@ -126,54 +120,64 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </div>
           </div>
 
-          {question.imageUrl && (
-            <div className="w-full aspect-[4/3] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0">
-              <img
-                src={question.imageUrl}
-                alt="Question scenario"
-                className="w-full h-full object-contain"
-              />
-              {question.isMajorFault && (
-                <div className="absolute top-2 right-2 bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">
-                  Major Fault
+          {/* Animated Question Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={question.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col flex-1 min-h-0"
+            >
+              {question.imageUrl && (
+                <div className="w-full aspect-[4/3] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0">
+                  <img
+                    src={question.imageUrl}
+                    alt="Question scenario"
+                    className="w-full h-full object-contain"
+                  />
+                  {question.isMajorFault && (
+                    <div className="absolute top-2 right-2 bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">
+                      Major Fault
+                    </div>
+                  )}
+                  
+                  <AnimatePresence>
+                    {showFeedback && selectedAnswer !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className={clsx(
+                          "absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-[2px]",
+                          isCorrect ? "bg-emerald-500/10" : "bg-rose-500/10"
+                        )}
+                      >
+                        <motion.div
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className={clsx(
+                            "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl",
+                            isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                          )}
+                        >
+                          {isCorrect ? (
+                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
-              
-              <AnimatePresence>
-                {showFeedback && selectedAnswer !== undefined && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={clsx(
-                      "absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-[2px]",
-                      isCorrect ? "bg-emerald-500/10" : "bg-rose-500/10"
-                    )}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className={clsx(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl",
-                        isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-                      )}
-                    >
-                      {isCorrect ? (
-                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
 
-          <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0">
+              <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0">
             <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
               {question.questionText}
             </h2>
@@ -426,8 +430,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   });
                 })()
               )}
+              </div>
             </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
 
           {/* Footer Navigation */}
           <div className="px-3 md:px-4 pt-2 md:pt-3 pb-3 md:pb-4 flex items-center justify-between flex-shrink-0 border-t border-slate-100">
@@ -455,8 +461,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               </button>
             )}
           </div>
-        </motion.div>
-      </AnimatePresence>
+      </div>
     </div>
   );
 };
