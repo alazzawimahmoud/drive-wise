@@ -131,7 +131,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               className="flex flex-col flex-1 min-h-0"
             >
               {question.imageUrl && (
-                <div className="w-full aspect-[4/3] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0">
+                <div className="w-full aspect-[16/10] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0 max-h-[35vh] md:max-h-none">
                   <img
                     src={question.imageUrl}
                     alt="Question scenario"
@@ -177,10 +177,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </div>
               )}
 
-              <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0">
-            <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
-              {question.questionText}
-            </h2>
+              <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+                <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
+                  {question.questionText}
+                </h2>
 
             <div className="space-y-2 md:space-y-3">
               {question.answerType === 'INPUT' ? (

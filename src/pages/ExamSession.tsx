@@ -250,7 +250,7 @@ export const ExamSession = () => {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-hidden">
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full p-2 md:p-4 lg:p-6">
         {/* Question Card - Contains header, content, and footer */}
         <div className="flex-1 min-h-0 flex flex-col">

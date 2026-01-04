@@ -6,6 +6,12 @@ export default defineConfig({
   
   server: {
     port: 3000,
+    host: true, // Allow external connections
+    allowedHosts: [
+      'endocrinous-arline-abandonable.ngrok-free.dev',
+      '.ngrok-free.dev', // Allow all ngrok free domains
+      '.ngrok.io', // Allow all ngrok domains
+    ],
   },
   
   build: {
