@@ -40,6 +40,12 @@ export const ExamSession = () => {
 
   const [state, send] = useMachine(examMachine);
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     if (examData && state.matches('idle')) {
       startTimeRef.current = new Date();
@@ -101,174 +107,220 @@ export const ExamSession = () => {
     );
   }
 
-  // Results screen
-  if (state.matches('completed') && results) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 text-center">
-            <div className={clsx(
-              "w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6",
-              results.passed ? "bg-emerald-100" : "bg-rose-100"
-            )}>
-              {results.passed ? (
-                <svg className="w-12 h-12 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-12 h-12 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </div>
-
-            <h1 className={clsx(
-              "text-3xl font-black mb-2",
-              results.passed ? "text-emerald-600" : "text-rose-600"
-            )}>
-              {results.passed ? 'Congratulations!' : 'Not Quite There'}
-            </h1>
-            <p className="text-slate-500 mb-8">
-              {results.passed 
-                ? 'You passed the exam!' 
-                : 'Keep practicing and try again.'}
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-slate-50 rounded-2xl p-4">
-                <div className="text-3xl font-black text-slate-900">{results.percentage}%</div>
-                <div className="text-sm text-slate-500 font-medium">Score</div>
-              </div>
-              <div className="bg-slate-50 rounded-2xl p-4">
-                <div className="text-3xl font-black text-slate-900">{results.correct}/{results.totalQuestions}</div>
-                <div className="text-sm text-slate-500 font-medium">Correct</div>
-              </div>
-              <div className="bg-amber-50 rounded-2xl p-4">
-                <div className="text-3xl font-black text-amber-600">{results.minorFaults}</div>
-                <div className="text-sm text-amber-600 font-medium">Minor Faults</div>
-              </div>
-              <div className="bg-rose-50 rounded-2xl p-4">
-                <div className="text-3xl font-black text-rose-600">{results.majorFaults}</div>
-                <div className="text-sm text-rose-600 font-medium">Major Faults</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => navigate('/')}
-                className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
-              >
-                Back to Dashboard
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Review screen before submitting
-  if (state.matches('reviewing') || state.matches('submitting')) {
-    const { questions, answers } = state.context;
-    const answeredCount = Object.keys(answers).filter(k => answers[parseInt(k)] !== undefined).length;
-    const unansweredCount = questions.length - answeredCount;
-
-    return (
-      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
-            <h1 className="text-2xl font-black text-slate-900 mb-2 text-center">Review Your Exam</h1>
-            <p className="text-slate-500 text-center mb-8">
-              Make sure you've answered all questions before submitting.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-2xl p-4 text-center">
-                <div className="text-3xl font-black text-emerald-600">{answeredCount}</div>
-                <div className="text-sm text-emerald-600 font-medium">Answered</div>
-              </div>
-              <div className={clsx(
-                "rounded-2xl p-4 text-center",
-                unansweredCount > 0 ? "bg-amber-50" : "bg-slate-50"
-              )}>
-                <div className={clsx(
-                  "text-3xl font-black",
-                  unansweredCount > 0 ? "text-amber-600" : "text-slate-400"
-                )}>{unansweredCount}</div>
-                <div className={clsx(
-                  "text-sm font-medium",
-                  unansweredCount > 0 ? "text-amber-600" : "text-slate-400"
-                )}>Unanswered</div>
-              </div>
-            </div>
-
-            {unansweredCount > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                <p className="text-amber-800 text-sm font-medium">
-                  ⚠️ You have {unansweredCount} unanswered question{unansweredCount > 1 ? 's' : ''}. 
-                  Unanswered questions will be marked as incorrect.
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => send({ type: 'PREV_QUESTION' })}
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 transition-all"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={handleSubmitExam}
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Exam'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const { questions, currentQuestionIndex, answers, timeLeft } = state.context;
   const currentQuestion = questions[currentQuestionIndex];
+  const answeredCount = Object.keys(answers).filter(k => answers[parseInt(k)] !== undefined).length;
+  const unansweredCount = questions.length - answeredCount;
 
   return (
     <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-hidden">
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full p-2 md:p-4 lg:p-6">
-        {/* Question Card - Contains header, content, and footer */}
+        {/* Unified Layout Container */}
         <div className="flex-1 min-h-0 flex flex-col">
-          <QuestionCard
-            question={currentQuestion}
-            selectedAnswer={answers[currentQuestion.id]}
-            onAnswer={(answer) => send({ type: 'SUBMIT_ANSWER', questionId: currentQuestion.id, answer })}
-            user={user}
-            currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-            timeLeft={timeLeft}
-            onExitClick={() => setShowExitModal(true)}
-            onPrevious={() => send({ type: 'PREV_QUESTION' })}
-            onNext={() => send({ type: 'NEXT_QUESTION' })}
-            onFinish={() => send({ type: 'FINISH_EXAM' })}
-            isFirstQuestion={currentQuestionIndex === 0}
-            isLastQuestion={currentQuestionIndex === questions.length - 1}
-          />
+          {state.matches('answering') ? (
+            <QuestionCard
+              question={currentQuestion}
+              selectedAnswer={answers[currentQuestion.id]}
+              onAnswer={(answer) => send({ type: 'SUBMIT_ANSWER', questionId: currentQuestion.id, answer })}
+              user={user}
+              currentQuestionIndex={currentQuestionIndex}
+              totalQuestions={questions.length}
+              timeLeft={timeLeft}
+              onExitClick={() => setShowExitModal(true)}
+              onPrevious={() => send({ type: 'PREV_QUESTION' })}
+              onNext={() => send({ type: 'NEXT_QUESTION' })}
+              onFinish={() => send({ type: 'FINISH_EXAM' })}
+              isFirstQuestion={currentQuestionIndex === 0}
+              isLastQuestion={currentQuestionIndex === questions.length - 1}
+            />
+          ) : (
+            <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+              <div className={clsx(
+                "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
+                state.matches('completed') && results
+                  ? results.passed
+                    ? "border-emerald-500 shadow-emerald-100"
+                    : "border-rose-500 shadow-rose-100"
+                  : "border-slate-100"
+              )}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex-shrink-0 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowExitModal(true)}
+                      className="hover:opacity-80 transition-opacity mr-1"
+                      aria-label="Go to homepage"
+                    >
+                      {user?.avatarUrl ? (
+                        <img 
+                          src={user.avatarUrl} 
+                          alt={user.displayName || 'User'}
+                          className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-slate-200 shadow-sm object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 border-2 border-slate-200 shadow-sm flex items-center justify-center">
+                          <span className="text-xs md:text-sm font-bold text-white">
+                            {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      {state.matches('completed') ? 'Results' : 'Review'}
+                    </span>
+                    <span className="text-base md:text-lg font-black text-slate-900">
+                      {state.matches('completed') ? 'Exam Summary' : 'Your Progress'}
+                    </span>
+                  </div>
+
+                  {!state.matches('completed') && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
+                      <span className={clsx(
+                        "text-sm md:text-base font-mono font-bold",
+                        timeLeft < 300 ? "text-rose-600" : "text-slate-700"
+                      )}>
+                        {formatTime(timeLeft)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                  {state.matches('completed') && results ? (
+                    <div className="text-center">
+                      <div className={clsx(
+                        "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6",
+                        results.passed ? "bg-emerald-100" : "bg-rose-100"
+                      )}>
+                        {results.passed ? (
+                          <svg className="w-10 h-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-10 h-10 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </div>
+
+                      <h1 className={clsx(
+                        "text-2xl md:text-3xl font-black mb-2",
+                        results.passed ? "text-emerald-600" : "text-rose-600"
+                      )}>
+                        {results.passed ? 'Congratulations!' : 'Not Quite There'}
+                      </h1>
+                      <p className="text-slate-500 mb-8">
+                        {results.passed 
+                          ? 'You passed the exam!' 
+                          : 'Keep practicing and try again.'}
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-3 md:gap-4 mb-8">
+                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.percentage}%</div>
+                          <div className="text-xs md:text-sm text-slate-500 font-medium">Score</div>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.correct}/{results.totalQuestions}</div>
+                          <div className="text-xs md:text-sm text-slate-500 font-medium">Correct</div>
+                        </div>
+                        <div className="bg-amber-50 rounded-2xl p-4 text-center">
+                          <div className="text-2xl md:text-3xl font-black text-amber-600">{results.minorFaults}</div>
+                          <div className="text-xs md:text-sm text-amber-600 font-medium">Minor Faults</div>
+                        </div>
+                        <div className="bg-rose-50 rounded-2xl p-4 text-center">
+                          <div className="text-2xl md:text-3xl font-black text-rose-600">{results.majorFaults}</div>
+                          <div className="text-xs md:text-sm text-rose-600 font-medium">Major Faults</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (state.matches('reviewing') || state.matches('submitting')) && (
+                    <>
+                      <h1 className="text-2xl font-black text-slate-900 mb-2 text-center">Review Your Exam</h1>
+                      <p className="text-slate-500 text-center mb-8">
+                        Make sure you've answered all questions before submitting.
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-4 mb-8">
+                        <div className="bg-emerald-50 rounded-2xl p-4 text-center">
+                          <div className="text-3xl font-black text-emerald-600">{answeredCount}</div>
+                          <div className="text-sm text-emerald-600 font-medium">Answered</div>
+                        </div>
+                        <div className={clsx(
+                          "rounded-2xl p-4 text-center",
+                          unansweredCount > 0 ? "bg-amber-50" : "bg-slate-50"
+                        )}>
+                          <div className={clsx(
+                            "text-3xl font-black",
+                            unansweredCount > 0 ? "text-amber-600" : "text-slate-400"
+                          )}>{unansweredCount}</div>
+                          <div className={clsx(
+                            "text-sm font-medium",
+                            unansweredCount > 0 ? "text-amber-600" : "text-slate-400"
+                          )}>Unanswered</div>
+                        </div>
+                      </div>
+
+                      {unansweredCount > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                          <p className="text-amber-800 text-sm font-medium">
+                            ⚠️ You have {unansweredCount} unanswered question{unansweredCount > 1 ? 's' : ''}. 
+                            Unanswered questions will be marked as incorrect.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Footer Navigation */}
+                <div className="px-3 md:px-4 pt-2 md:pt-3 pb-3 md:pb-4 flex items-center justify-between flex-shrink-0 border-t border-slate-100">
+                  {state.matches('completed') ? (
+                    <>
+                      <button
+                        onClick={() => navigate('/')}
+                        className="px-4 md:px-5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
+                      >
+                        Back to Dashboard
+                      </button>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-5 md:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 transition-all"
+                      >
+                        Try Again
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => send({ type: 'PREV_QUESTION' })}
+                        disabled={isSubmitting}
+                        className="px-4 md:px-5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-all"
+                      >
+                        Go Back
+                      </button>
+                      <button
+                        onClick={handleSubmitExam}
+                        disabled={isSubmitting}
+                        className="px-5 md:px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-200 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Submitting...
+                          </>
+                        ) : (
+                          'Submit Exam'
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
