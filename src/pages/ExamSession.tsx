@@ -88,7 +88,7 @@ export const ExamSession = () => {
       });
 
       setResults(res.data.result);
-      send({ type: 'REPORT.SUCCESS', data: res.data.result });
+      send({ type: 'REPORT.SUCCESS', data: res.data });
     } catch (error) {
       console.error('Failed to submit exam:', error);
       send({ type: 'REPORT.FAILURE', error });
@@ -117,19 +117,35 @@ export const ExamSession = () => {
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full p-2 md:p-4 lg:p-6">
         {/* Unified Layout Container */}
         <div className="flex-1 min-h-0 flex flex-col">
-          {state.matches('answering') ? (
+          {state.matches('answering') || state.matches('reviewing_results') ? (
             <QuestionCard
-              question={currentQuestion}
+              question={
+                state.matches('reviewing_results')
+                  ? {
+                      ...currentQuestion,
+                      answer: state.context.results?.details?.find((d: any) => d.questionId === currentQuestion.id)?.correct,
+                      explanation: state.context.results?.details?.find((d: any) => d.questionId === currentQuestion.id)?.explanation,
+                    }
+                  : currentQuestion
+              }
               selectedAnswer={answers[currentQuestion.id]}
-              onAnswer={(answer) => send({ type: 'SUBMIT_ANSWER', questionId: currentQuestion.id, answer })}
+              onAnswer={(answer) => !state.matches('reviewing_results') && send({ type: 'SUBMIT_ANSWER', questionId: currentQuestion.id, answer })}
+              showFeedback={state.matches('reviewing_results')}
               user={user}
               currentQuestionIndex={currentQuestionIndex}
               totalQuestions={questions.length}
-              timeLeft={timeLeft}
+              timeLeft={state.matches('reviewing_results') ? 0 : timeLeft}
               onExitClick={() => setShowExitModal(true)}
               onPrevious={() => send({ type: 'PREV_QUESTION' })}
               onNext={() => send({ type: 'NEXT_QUESTION' })}
-              onFinish={() => send({ type: 'FINISH_EXAM' })}
+              onFinish={() => {
+                if (state.matches('reviewing_results')) {
+                  send({ type: 'BACK_TO_SUMMARY' });
+                } else {
+                  send({ type: 'FINISH_EXAM' });
+                }
+              }}
+              finishLabel={state.matches('reviewing_results') ? "Back to Summary" : "Finish Exam"}
               isFirstQuestion={currentQuestionIndex === 0}
               isLastQuestion={currentQuestionIndex === questions.length - 1}
             />
@@ -235,6 +251,26 @@ export const ExamSession = () => {
                           <div className="text-xs md:text-sm text-rose-600 font-medium">Major Faults</div>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => send({ type: 'REVIEW_RESULTS' })}
+                        className="w-full p-3 md:p-4 bg-white border-2 border-slate-100 hover:border-indigo-600 hover:bg-indigo-50 rounded-2xl flex items-center gap-3 md:gap-4 transition-all group mb-4"
+                      >
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-sm md:text-base font-black text-slate-900">Review Questions</div>
+                          <div className="text-xs md:text-sm font-bold text-slate-500">Learn from your mistakes</div>
+                        </div>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 group-hover:text-indigo-600 group-hover:bg-indigo-100 transition-all">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </button>
                     </div>
                   ) : (state.matches('reviewing') || state.matches('submitting')) && (
                     <>

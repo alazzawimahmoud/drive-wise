@@ -9,6 +9,7 @@ interface Question {
   imageUrl: string | null;
   category: { slug: string; title: string };
   answer?: any;
+  explanation?: string | null;
 }
 
 interface ExamContext {
@@ -30,6 +31,8 @@ export const examMachine = setup({
       | { type: 'FINISH_EXAM' }
       | { type: 'TICK' }
       | { type: 'SUBMIT_EXAM' }
+      | { type: 'REVIEW_RESULTS' }
+      | { type: 'BACK_TO_SUMMARY' }
       | { type: 'REPORT.SUCCESS'; data: any }
       | { type: 'REPORT.FAILURE'; error: any };
   },
@@ -53,6 +56,7 @@ export const examMachine = setup({
             timeLeft: ({ event }) => event.timeLimit * 60,
             currentQuestionIndex: 0,
             answers: {},
+            results: null,
           }),
         },
       },
@@ -110,7 +114,29 @@ export const examMachine = setup({
       },
     },
     completed: {
-      type: 'final',
+      on: {
+        REVIEW_RESULTS: {
+          target: 'reviewing_results',
+          actions: assign({ currentQuestionIndex: 0 }),
+        },
+      },
+    },
+    reviewing_results: {
+      on: {
+        NEXT_QUESTION: {
+          actions: assign({
+            currentQuestionIndex: ({ context }) =>
+              Math.min(context.currentQuestionIndex + 1, context.questions.length - 1),
+          }),
+        },
+        PREV_QUESTION: {
+          actions: assign({
+            currentQuestionIndex: ({ context }) =>
+              Math.max(context.currentQuestionIndex - 1, 0),
+          }),
+        },
+        BACK_TO_SUMMARY: 'completed',
+      },
     },
   },
 });

@@ -299,6 +299,8 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'answers array is required' });
     }
 
+    const locale = (req.body.locale as string) || 'nl-BE';
+
     // Fetch correct answers and category IDs for all submitted questions
     const questionIds = answers.map(a => a.questionId);
     
@@ -308,8 +310,17 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
         answer: questions.answer,
         isMajorFault: questions.isMajorFault,
         categoryId: questions.categoryId,
+        questionText: questionTranslations.questionText,
+        explanation: questionTranslations.explanation,
       })
       .from(questions)
+      .leftJoin(
+        questionTranslations,
+        and(
+          eq(questionTranslations.questionId, questions.id),
+          eq(questionTranslations.locale, locale)
+        )
+      )
       .where(inArray(questions.id, questionIds));
 
     const answerMap = new Map(correctAnswers.map(q => [q.id, q]));
@@ -345,6 +356,8 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
         correct: question.answer,
         isCorrect,
         isMajorFault: question.isMajorFault,
+        questionText: question.questionText,
+        explanation: question.explanation,
       };
     });
 

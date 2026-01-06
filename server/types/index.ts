@@ -130,6 +130,8 @@ export interface ScoreDetail {
   correct: Question['answer'];
   isCorrect: boolean;
   isMajorFault: boolean;
+  questionText?: string | null;
+  explanation?: string | null;
 }
 
 /** Exam result */

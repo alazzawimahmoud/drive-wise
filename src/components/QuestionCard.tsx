@@ -16,6 +16,7 @@ interface Question {
   choices: Choice[];
   imageUrl: string | null;
   answer?: any;
+  explanation?: string | null;
 }
 
 interface QuestionCardProps {
@@ -36,6 +37,7 @@ interface QuestionCardProps {
   onPrevious: () => void;
   onNext: () => void;
   onFinish: () => void;
+  finishLabel?: string;
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
 }
@@ -53,6 +55,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   onPrevious,
   onNext,
   onFinish,
+  finishLabel = "Finish Exam",
   isFirstQuestion,
   isLastQuestion,
 }) => {
@@ -131,7 +134,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               className="flex flex-col flex-1 min-h-0"
             >
               {question.imageUrl && (
-                <div className="w-full aspect-[16/10] md:aspect-[16/10] bg-white relative border-b border-slate-100 flex-shrink-0 max-h-[35vh] md:max-h-none">
+                <div className={clsx(
+                  "w-full bg-white relative border-b border-slate-100 flex-shrink-0 overflow-hidden transition-all duration-500",
+                  showFeedback 
+                    ? "max-h-[25vh] lg:max-h-[240px]" 
+                    : "aspect-[16/10] max-h-[35vh] md:max-h-none"
+                )}>
                   <img
                     src={question.imageUrl}
                     alt="Question scenario"
@@ -177,12 +185,23 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </div>
               )}
 
-              <div className="p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-                <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
+              <div className={clsx(
+                "p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden",
+                showFeedback && "lg:pt-4"
+              )}>
+                <h2 className={clsx(
+                  "font-bold text-slate-900 leading-tight",
+                  showFeedback 
+                    ? "text-sm md:text-base mb-2 md:mb-3" 
+                    : "text-sm md:text-base lg:text-lg mb-2 md:mb-3 lg:mb-4"
+                )}>
                   {question.questionText}
                 </h2>
 
-            <div className="space-y-2 md:space-y-3">
+            <div className={clsx(
+              "space-y-2 md:space-y-3",
+              showFeedback && "lg:space-y-2"
+            )}>
               {question.answerType === 'INPUT' ? (
                 <div className="space-y-2 md:space-y-3">
                   <div className="relative">
@@ -430,6 +449,26 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   });
                 })()
               )}
+
+              {showFeedback && question.explanation && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 p-4 md:p-5 bg-indigo-50 rounded-xl md:rounded-2xl border border-indigo-100"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-xs md:text-sm font-black text-indigo-900 uppercase tracking-wider">Uitleg</span>
+                  </div>
+                  <p className="text-sm md:text-base text-indigo-900 font-medium leading-relaxed">
+                    {question.explanation}
+                  </p>
+                </motion.div>
+              )}
               </div>
             </div>
             </motion.div>
@@ -450,7 +489,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 onClick={onFinish}
                 className="px-5 md:px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-200 transition-all"
               >
-                Finish Exam
+                {finishLabel}
               </button>
             ) : (
               <button
