@@ -17,17 +17,25 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { CleanedQuestion, AnswerType } from '../server/types/index.js';
 
+// ============================================================================
+// FILE PATHS
+// ============================================================================
+
 const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
 const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
 
-interface ValidationError {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface ValidationError {
   questionId: string;
   field: string;
   message: string;
   severity: 'error' | 'warning';
 }
 
-interface ValidationResult {
+export interface ValidationResult {
   valid: boolean;
   totalQuestions: number;
   errors: ValidationError[];
@@ -39,6 +47,16 @@ interface ValidationResult {
   };
 }
 
+export interface ValidateOptions {
+  inputFile?: string;
+  verbose?: boolean;
+  exitOnError?: boolean;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
 // Common Dutch words to detect language
 const DUTCH_WORDS = [
   'de', 'het', 'een', 'is', 'van', 'en', 'in', 'op', 'te', 'dat',
@@ -47,6 +65,10 @@ const DUTCH_WORDS = [
   'voorrang', 'kruispunt', 'parkeren', 'stopppen', 'bord', 'licht',
   'wie', 'wat', 'waar', 'hoe', 'waarom', 'wanneer', 'welke', 'uit'
 ];
+
+// ============================================================================
+// VALIDATION HELPERS
+// ============================================================================
 
 function containsDutchWords(text: string): boolean {
   const lowerText = text.toLowerCase();
@@ -187,25 +209,42 @@ function validateQuestion(question: CleanedQuestion): ValidationError[] {
   return errors;
 }
 
-async function main() {
-  console.log('🔍 Starting data validation...\n');
+// ============================================================================
+// CORE VALIDATION FUNCTION (exportable)
+// ============================================================================
 
-  // Try to load rephrased file, fall back to cleaned
-  let inputFile = INPUT_FILE;
-  try {
-    await fs.access(INPUT_FILE);
-  } catch {
-    console.log(`   ${INPUT_FILE} not found, using ${FALLBACK_FILE}`);
-    inputFile = FALLBACK_FILE;
+/**
+ * Run data validation
+ * Can be called programmatically from the pipeline
+ */
+export async function runValidation(options: ValidateOptions = {}): Promise<ValidationResult> {
+  const {
+    inputFile,
+    verbose = true,
+    exitOnError = false,
+  } = options;
+
+  if (verbose) console.log('🔍 Starting data validation...\n');
+
+  // Determine input file
+  let actualInputFile = inputFile;
+  if (!actualInputFile) {
+    try {
+      await fs.access(INPUT_FILE);
+      actualInputFile = INPUT_FILE;
+    } catch {
+      if (verbose) console.log(`   ${INPUT_FILE} not found, using ${FALLBACK_FILE}`);
+      actualInputFile = FALLBACK_FILE;
+    }
   }
 
-  console.log(`📂 Reading ${inputFile}...`);
-  const inputData = JSON.parse(await fs.readFile(inputFile, 'utf-8'));
+  if (verbose) console.log(`📂 Reading ${actualInputFile}...`);
+  const inputData = JSON.parse(await fs.readFile(actualInputFile, 'utf-8'));
   const questions: CleanedQuestion[] = inputData.data;
-  console.log(`   Found ${questions.length} questions\n`);
+  if (verbose) console.log(`   Found ${questions.length} questions\n`);
 
   // Validate all questions
-  console.log('🔄 Validating questions...');
+  if (verbose) console.log('🔄 Validating questions...');
   const allErrors: ValidationError[] = [];
 
   for (const question of questions) {
@@ -236,49 +275,86 @@ async function main() {
   };
 
   // Print report
-  console.log('\n📊 Validation Results:\n');
-  console.log(`   Total questions: ${result.totalQuestions}`);
-  console.log(`   Errors: ${result.summary.errorCount}`);
-  console.log(`   Warnings: ${result.summary.warningCount}`);
-  console.log(`   Valid: ${result.valid ? '✅ YES' : '❌ NO'}`);
+  if (verbose) {
+    console.log('\n📊 Validation Results:\n');
+    console.log(`   Total questions: ${result.totalQuestions}`);
+    console.log(`   Errors: ${result.summary.errorCount}`);
+    console.log(`   Warnings: ${result.summary.warningCount}`);
+    console.log(`   Valid: ${result.valid ? '✅ YES' : '❌ NO'}`);
 
-  if (Object.keys(byField).length > 0) {
-    console.log('\n📈 Issues by field:');
-    for (const [field, count] of Object.entries(byField).sort((a, b) => b[1] - a[1])) {
-      console.log(`   ${field}: ${count}`);
+    if (Object.keys(byField).length > 0) {
+      console.log('\n📈 Issues by field:');
+      for (const [field, count] of Object.entries(byField).sort((a, b) => b[1] - a[1])) {
+        console.log(`   ${field}: ${count}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      console.log('\n❌ Errors (first 10):');
+      for (const error of errors.slice(0, 10)) {
+        console.log(`   [${error.questionId}] ${error.field}: ${error.message}`);
+      }
+      if (errors.length > 10) {
+        console.log(`   ... and ${errors.length - 10} more errors`);
+      }
+    }
+
+    if (warnings.length > 0 && warnings.length <= 20) {
+      console.log('\n⚠️ Warnings:');
+      for (const warning of warnings) {
+        console.log(`   [${warning.questionId}] ${warning.field}: ${warning.message}`);
+      }
+    } else if (warnings.length > 20) {
+      console.log(`\n⚠️ ${warnings.length} warnings (showing first 10):`);
+      for (const warning of warnings.slice(0, 10)) {
+        console.log(`   [${warning.questionId}] ${warning.field}: ${warning.message}`);
+      }
     }
   }
 
-  if (errors.length > 0) {
-    console.log('\n❌ Errors (first 10):');
-    for (const error of errors.slice(0, 10)) {
-      console.log(`   [${error.questionId}] ${error.field}: ${error.message}`);
-    }
-    if (errors.length > 10) {
-      console.log(`   ... and ${errors.length - 10} more errors`);
-    }
-  }
-
-  if (warnings.length > 0 && warnings.length <= 20) {
-    console.log('\n⚠️ Warnings:');
-    for (const warning of warnings) {
-      console.log(`   [${warning.questionId}] ${warning.field}: ${warning.message}`);
-    }
-  } else if (warnings.length > 20) {
-    console.log(`\n⚠️ ${warnings.length} warnings (showing first 10):`);
-    for (const warning of warnings.slice(0, 10)) {
-      console.log(`   [${warning.questionId}] ${warning.field}: ${warning.message}`);
-    }
-  }
-
-  // Exit with error code if validation failed
-  if (!result.valid) {
-    console.log('\n❌ Validation failed! Fix errors before seeding database.');
+  // Exit with error code if validation failed and exitOnError is true
+  if (!result.valid && exitOnError) {
+    if (verbose) console.log('\n❌ Validation failed! Fix errors before seeding database.');
     process.exit(1);
   }
 
-  console.log('\n✅ Validation passed!');
+  if (verbose && result.valid) {
+    console.log('\n✅ Validation passed!');
+  }
+
+  return result;
 }
 
-main().catch(console.error);
+/**
+ * Get the default input file path (rephrased or cleaned)
+ */
+export async function getValidationInputPath(): Promise<string> {
+  try {
+    await fs.access(INPUT_FILE);
+    return INPUT_FILE;
+  } catch {
+    return FALLBACK_FILE;
+  }
+}
 
+// ============================================================================
+// CLI ENTRY POINT
+// ============================================================================
+
+async function main() {
+  try {
+    const result = await runValidation({ verbose: true, exitOnError: true });
+    if (!result.valid) {
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('❌ Validation failed:', error);
+    process.exit(1);
+  }
+}
+
+// Only run main if this is the entry point
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
+  main();
+}

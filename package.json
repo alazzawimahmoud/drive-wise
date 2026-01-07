@@ -8,16 +8,12 @@
     "build": "(npm install --no-save @rollup/rollup-linux-x64-gnu 2>/dev/null || true) && vite build && tsc -p tsconfig.node.json",
     "start": "npm run db:init && NODE_ENV=production node dist/server/index.js",
     "preview": "NODE_ENV=production node dist/server/index.js",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
     "db:init": "tsx scripts/db-init.ts",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "data:cleanup": "tsx scripts/cleanup.ts",
-    "data:rephrase": "tsx scripts/rephrase.ts",
-    "data:validate": "tsx scripts/validate.ts",
-    "data:seed": "tsx scripts/seed.ts",
-    "data:pipeline": "npm run data:cleanup && npm run data:rephrase && npm run data:validate && npm run data:seed"
+    "db:seed": "tsx scripts/seed.ts",
+    "deploy": "tsx scripts/pipeline.ts",
+    "deploy:data-only": "tsx scripts/pipeline.ts --skip-seed"
   },
   "keywords": [
     "driving",

@@ -20,8 +20,36 @@ import path from 'path';
 import he from 'he';
 import type { RawQuestion, CleanedQuestion, CleanedChoice, RegionCode, ExtractedLesson } from '../server/types/index.js';
 
+// ============================================================================
+// FILE PATHS
+// ============================================================================
+
 const INPUT_FILE = path.join(process.cwd(), 'data_final.json');
 const OUTPUT_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface CleanupOptions {
+  inputFile?: string;
+  outputFile?: string;
+  verbose?: boolean;
+}
+
+export interface CleanupResult {
+  success: boolean;
+  questionsProcessed: number;
+  categoriesFound: number;
+  lessonsFound: number;
+  assetsFound: number;
+  outputFile: string;
+  regionDistribution: Record<RegionCode, number>;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 // Canonical lesson names mapping (lesson number -> official topic)
 // Derived from the most common naming patterns in the data
@@ -69,6 +97,10 @@ const REGION_KEYWORDS: Record<RegionCode, string[]> = {
   wallonia: ['wallonië', 'wallonie', 'waals', 'waalse'],
   national: [],
 };
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
  * Decode HTML entities and strip HTML tags
@@ -226,7 +258,7 @@ function removeListingPrefix(text: string): string {
   return text;
 }
 
- /**
+/**
  * Detect region from question text and explanation
  */
 function detectRegion(questionText: string, explanation: string): RegionCode {
@@ -331,19 +363,35 @@ function processQuestion(raw: RawQuestion): CleanedQuestion {
   };
 }
 
-async function main() {
-  console.log('🧹 Starting data cleanup...\n');
+// ============================================================================
+// CORE CLEANUP FUNCTION (exportable)
+// ============================================================================
+
+/**
+ * Run the data cleanup process
+ * Can be called programmatically from the pipeline
+ */
+export async function runCleanup(options: CleanupOptions = {}): Promise<CleanupResult> {
+  const {
+    inputFile = INPUT_FILE,
+    outputFile = OUTPUT_FILE,
+    verbose = true,
+  } = options;
+  
+  if (verbose) console.log('🧹 Starting data cleanup...\n');
   
   // Read input file
-  console.log(`📂 Reading ${INPUT_FILE}...`);
-  const rawData = await fs.readFile(INPUT_FILE, 'utf-8');
+  if (verbose) console.log(`📂 Reading ${inputFile}...`);
+  const rawData = await fs.readFile(inputFile, 'utf-8');
   const { data, assetsBaseUrl } = JSON.parse(rawData) as { data: RawQuestion[]; assetsBaseUrl: string };
   
-  console.log(`   Found ${data.length} questions`);
-  console.log(`   Assets base URL: ${assetsBaseUrl}\n`);
+  if (verbose) {
+    console.log(`   Found ${data.length} questions`);
+    console.log(`   Assets base URL: ${assetsBaseUrl}\n`);
+  }
   
   // Process all questions
-  console.log('🔄 Processing questions...');
+  if (verbose) console.log('🔄 Processing questions...');
   const cleanedQuestions: CleanedQuestion[] = [];
   const categories = new Set<string>();
   const assets = new Set<string>();
@@ -383,7 +431,7 @@ async function main() {
   })).filter(l => l.questionCount > 0); // Only include lessons that have questions
   
   // Ensure output directory exists
-  await fs.mkdir(path.dirname(OUTPUT_FILE), { recursive: true });
+  await fs.mkdir(path.dirname(outputFile), { recursive: true });
   
   // Write output
   const output = {
@@ -401,27 +449,74 @@ async function main() {
     data: cleanedQuestions,
   };
   
-  await fs.writeFile(OUTPUT_FILE, JSON.stringify(output, null, 2));
+  await fs.writeFile(outputFile, JSON.stringify(output, null, 2));
   
   // Summary
-  console.log('\n✅ Cleanup complete!\n');
-  console.log('📊 Summary:');
-  console.log(`   Questions: ${cleanedQuestions.length}`);
-  console.log(`   Categories: ${categories.size}`);
-  console.log(`   Lessons: ${lessons.length}`);
-  console.log(`   Assets: ${assets.size}`);
-  console.log('\n🌍 Region distribution:');
-  console.log(`   National: ${regionCounts.national}`);
-  console.log(`   Brussels: ${regionCounts.brussels}`);
-  console.log(`   Flanders: ${regionCounts.flanders}`);
-  console.log(`   Wallonia: ${regionCounts.wallonia}`);
-  console.log('\n📚 Top lessons by question count:');
-  const topLessons = [...lessons].sort((a, b) => b.questionCount - a.questionCount).slice(0, 5);
-  for (const lesson of topLessons) {
-    console.log(`   LES ${lesson.number}: ${lesson.topic} (${lesson.questionCount} questions)`);
+  if (verbose) {
+    console.log('\n✅ Cleanup complete!\n');
+    console.log('📊 Summary:');
+    console.log(`   Questions: ${cleanedQuestions.length}`);
+    console.log(`   Categories: ${categories.size}`);
+    console.log(`   Lessons: ${lessons.length}`);
+    console.log(`   Assets: ${assets.size}`);
+    console.log('\n🌍 Region distribution:');
+    console.log(`   National: ${regionCounts.national}`);
+    console.log(`   Brussels: ${regionCounts.brussels}`);
+    console.log(`   Flanders: ${regionCounts.flanders}`);
+    console.log(`   Wallonia: ${regionCounts.wallonia}`);
+    console.log('\n📚 Top lessons by question count:');
+    const topLessons = [...lessons].sort((a, b) => b.questionCount - a.questionCount).slice(0, 5);
+    for (const lesson of topLessons) {
+      console.log(`   LES ${lesson.number}: ${lesson.topic} (${lesson.questionCount} questions)`);
+    }
+    console.log(`\n📁 Output: ${outputFile}`);
   }
-  console.log(`\n📁 Output: ${OUTPUT_FILE}`);
+  
+  return {
+    success: true,
+    questionsProcessed: cleanedQuestions.length,
+    categoriesFound: categories.size,
+    lessonsFound: lessons.length,
+    assetsFound: assets.size,
+    outputFile,
+    regionDistribution: regionCounts,
+  };
 }
 
-main().catch(console.error);
+/**
+ * Check if cleanup output exists
+ */
+export async function cleanupOutputExists(): Promise<boolean> {
+  try {
+    await fs.access(OUTPUT_FILE);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
+/**
+ * Get the default output file path
+ */
+export function getCleanupOutputPath(): string {
+  return OUTPUT_FILE;
+}
+
+// ============================================================================
+// CLI ENTRY POINT
+// ============================================================================
+
+async function main() {
+  try {
+    await runCleanup({ verbose: true });
+  } catch (error) {
+    console.error('❌ Cleanup failed:', error);
+    process.exit(1);
+  }
+}
+
+// Only run main if this is the entry point
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
+  main();
+}
