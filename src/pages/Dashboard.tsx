@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
@@ -8,10 +7,10 @@ import {
   Trophy, 
   Target, 
   Flame, 
-  ChevronRight, 
   BookOpen, 
   LogOut,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck
 } from 'lucide-react';
 
 interface Stats {
@@ -68,15 +67,24 @@ export const DashboardPage = () => {
         </div>
         
         <nav className="flex-1 px-4 space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold"
+          >
             <Target size={20} /> Dashboard
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <BookOpen size={20} /> Lessons
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <Trophy size={20} /> Exam History
-          </a>
+          </button>
+          <button 
+            onClick={() => navigate('/lessons')}
+            className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors"
+          >
+            <BookOpen size={20} /> Study
+          </button>
+          <button 
+            onClick={() => navigate('/exam')}
+            className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors"
+          >
+            <ClipboardCheck size={20} /> Exam
+          </button>
         </nav>
 
         <div className="p-4 border-t border-slate-100">
@@ -111,12 +119,22 @@ export const DashboardPage = () => {
             </div>
           </div>
           
-          <button 
-            onClick={() => navigate('/exam')}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-200 transition-all transform hover:scale-105"
-          >
-            Start Mock Exam
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => navigate('/lessons')}
+              className="bg-white hover:bg-slate-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold border-2 border-indigo-200 transition-all transform hover:scale-105"
+            >
+              <BookOpen size={18} className="inline mr-2" />
+              Study
+            </button>
+            <button 
+              onClick={() => navigate('/exam')}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-200 transition-all transform hover:scale-105"
+            >
+              <ClipboardCheck size={18} className="inline mr-2" />
+              Exam
+            </button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -204,37 +222,6 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        <section className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-slate-900">Category Performance</h3>
-            <button className="text-indigo-600 font-bold text-sm flex items-center gap-1">
-              View All <ChevronRight size={16} />
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {categoryData?.categories.slice(0, 3).map(cat => (
-              <div key={cat.slug} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                <h4 className="font-bold text-slate-800 mb-4">{cat.title}</h4>
-                <div className="w-full bg-slate-100 h-2 rounded-full mb-2">
-                  <div 
-                    className={clsx(
-                      "h-full rounded-full transition-all",
-                      cat.accuracy >= 80 ? "bg-emerald-500" : cat.accuracy >= 60 ? "bg-amber-500" : "bg-rose-500"
-                    )}
-                    style={{ width: `${cat.accuracy}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                  <span className="text-slate-400">Accuracy</span>
-                  <span className={clsx(
-                    cat.accuracy >= 80 ? "text-emerald-600" : cat.accuracy >= 60 ? "text-amber-600" : "text-rose-600"
-                  )}>{cat.accuracy}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
     </div>
   );

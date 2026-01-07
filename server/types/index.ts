@@ -26,6 +26,8 @@ export type OAuthAccount = InferSelectModel<typeof schema.oauthAccounts>;
 export type UserBookmark = InferSelectModel<typeof schema.userBookmarks>;
 export type ExamSession = InferSelectModel<typeof schema.examSessions>;
 export type ExamSessionAnswer = InferSelectModel<typeof schema.examSessionAnswers>;
+export type StudyProgress = InferSelectModel<typeof schema.studyProgress>;
+export type StudyQuestionStatus = InferSelectModel<typeof schema.studyQuestionStatus>;
 
 // ============================================================================
 // INFERRED INSERT TYPES
@@ -48,6 +50,8 @@ export type NewOAuthAccount = InferInsertModel<typeof schema.oauthAccounts>;
 export type NewUserBookmark = InferInsertModel<typeof schema.userBookmarks>;
 export type NewExamSession = InferInsertModel<typeof schema.examSessions>;
 export type NewExamSessionAnswer = InferInsertModel<typeof schema.examSessionAnswers>;
+export type NewStudyProgress = InferInsertModel<typeof schema.studyProgress>;
+export type NewStudyQuestionStatus = InferInsertModel<typeof schema.studyQuestionStatus>;
 
 // ============================================================================
 // ENUM TYPES
@@ -397,4 +401,67 @@ export interface ExamReadiness {
     averagePercentage: number;
     weakCategoryCount: number;
   };
+}
+
+// ============================================================================
+// STUDY MODE API TYPES
+// ============================================================================
+
+export type StudyQuestionStatusType = 'seen' | 'mastered' | 'needs_review';
+
+/** Lesson with study progress in API response */
+export interface ApiLessonWithProgress {
+  id: number;
+  number: number;
+  slug: string;
+  title: string | null;
+  description: string | null;
+  questionCount: number;
+  majorFaultCount: number;
+  progress: {
+    questionsSeen: number;
+    questionsMastered: number;
+    percentComplete: number;
+    lastStudiedAt: Date | null;
+  } | null;
+}
+
+/** Study question with full details */
+export interface ApiStudyQuestion {
+  id: number;
+  originalId: string;
+  answerType: AnswerType;
+  answer: Question['answer'];
+  isMajorFault: boolean;
+  questionText: string | null;
+  explanation: string | null;
+  category: {
+    slug: string | null;
+    title: string | null;
+  };
+  region: {
+    code: string | null;
+    name: string | null;
+  } | null;
+  imageUrl: string | null;
+  choices: ApiChoice[];
+  lessons: ApiQuestionLesson[];
+  studyStatus: {
+    status: StudyQuestionStatusType;
+    timesSeen: number;
+    lastSeenAt: Date;
+  } | null;
+  isBookmarked: boolean;
+}
+
+/** Overall study progress */
+export interface ApiStudyOverview {
+  totalLessons: number;
+  lessonsStarted: number;
+  lessonsCompleted: number;
+  totalQuestions: number;
+  questionsSeen: number;
+  questionsMastered: number;
+  questionsNeedReview: number;
+  overallProgress: number;
 }

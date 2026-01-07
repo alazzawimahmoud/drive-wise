@@ -51,6 +51,36 @@ export const userBookmarks = pgTable('user_bookmarks', {
 ]);
 
 // ============================================================================
+// STUDY PROGRESS (per-lesson tracking)
+// ============================================================================
+
+export const studyProgress = pgTable('study_progress', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  lessonId: integer('lesson_id').references(() => lessons.id, { onDelete: 'cascade' }).notNull(),
+  questionsSeen: integer('questions_seen').default(0).notNull(),
+  questionsMastered: integer('questions_mastered').default(0).notNull(),
+  lastStudiedAt: timestamp('last_studied_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('study_progress_user_lesson_idx').on(table.userId, table.lessonId),
+]);
+
+// ============================================================================
+// STUDY QUESTION STATUS (per-question tracking)
+// ============================================================================
+
+export const studyQuestionStatus = pgTable('study_question_status', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  questionId: integer('question_id').references(() => questions.id, { onDelete: 'cascade' }).notNull(),
+  status: varchar('status', { length: 20 }).default('seen').notNull(), // 'seen', 'mastered', 'needs_review'
+  timesSeen: integer('times_seen').default(1).notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('study_question_status_user_question_idx').on(table.userId, table.questionId),
+]);
+
+// ============================================================================
 // EXAM SESSIONS
 // ============================================================================
 
@@ -339,6 +369,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   oauthAccounts: many(oauthAccounts),
   bookmarks: many(userBookmarks),
   examSessions: many(examSessions),
+  studyProgress: many(studyProgress),
+  studyQuestionStatuses: many(studyQuestionStatus),
 }));
 
 export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
@@ -379,6 +411,28 @@ export const examSessionAnswersRelations = relations(examSessionAnswers, ({ one 
   category: one(categories, {
     fields: [examSessionAnswers.categoryId],
     references: [categories.id],
+  }),
+}));
+
+export const studyProgressRelations = relations(studyProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [studyProgress.userId],
+    references: [users.id],
+  }),
+  lesson: one(lessons, {
+    fields: [studyProgress.lessonId],
+    references: [lessons.id],
+  }),
+}));
+
+export const studyQuestionStatusRelations = relations(studyQuestionStatus, ({ one }) => ({
+  user: one(users, {
+    fields: [studyQuestionStatus.userId],
+    references: [users.id],
+  }),
+  question: one(questions, {
+    fields: [studyQuestionStatus.questionId],
+    references: [questions.id],
   }),
 }));
 

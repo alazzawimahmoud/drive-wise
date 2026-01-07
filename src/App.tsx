@@ -5,6 +5,8 @@ import { AuthCallback } from './pages/AuthCallback';
 import { ExamSession } from './pages/ExamSession';
 import { DashboardPage } from './pages/Dashboard';
 import { AdminDashboardPage } from './pages/AdminDashboard';
+import { LessonsPage } from './pages/LessonsPage';
+import { LessonStudy } from './pages/LessonStudy';
 import React from 'react';
 
 const queryClient = new QueryClient();
@@ -79,6 +81,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/lessons" 
+              element={
+                <ProtectedRoute>
+                  <LessonsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/study/:slug" 
+              element={
+                <ProtectedRoute>
+                  <LessonStudy />
                 </ProtectedRoute>
               } 
             />

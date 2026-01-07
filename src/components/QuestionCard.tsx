@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
+import { ChevronLeft, ChevronRight, Flag } from 'lucide-react';
 
 interface Choice {
   position: number;
@@ -475,30 +476,32 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           </AnimatePresence>
 
           {/* Footer Navigation */}
-          <div className="px-3 md:px-4 pt-2 md:pt-3 pb-3 md:pb-4 flex items-center justify-between flex-shrink-0 border-t border-slate-100">
+          <div className="px-3 py-2 flex items-center justify-between flex-shrink-0 border-t border-slate-100">
             <button
               onClick={onPrevious}
               disabled={isFirstQuestion}
-              className="px-4 md:px-5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-all"
+              className="p-2 rounded-full text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              aria-label="Previous"
             >
-              Previous
+              <ChevronLeft size={20} />
             </button>
 
-            {isLastQuestion ? (
-              <button
-                onClick={onFinish}
-                className="px-5 md:px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-200 transition-all"
-              >
-                {finishLabel}
-              </button>
-            ) : (
-              <button
-                onClick={onNext}
-                className="px-5 md:px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 transition-all"
-              >
-                Next Question
-              </button>
-            )}
+            <button
+              onClick={isLastQuestion ? onFinish : onNext}
+              className={clsx(
+                "p-2 rounded-full transition-all",
+                isLastQuestion
+                  ? "text-emerald-600 hover:bg-emerald-50"
+                  : "text-indigo-600 hover:bg-indigo-50"
+              )}
+              aria-label={isLastQuestion ? finishLabel : "Next"}
+            >
+              {isLastQuestion ? (
+                <Flag size={20} />
+              ) : (
+                <ChevronRight size={20} />
+              )}
+            </button>
           </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { authRouter } from './auth.js';
 import { bookmarksRouter } from './bookmarks.js';
 import { statsRouter } from './stats.js';
 import { adminRouter } from './admin.js';
+import { studyRouter } from './study.js';
 import { swaggerSpec } from '../swagger.js';
 
 export const router = Router();
@@ -42,6 +43,7 @@ router.use('/exam', examRouter);
 router.use('/bookmarks', bookmarksRouter);
 router.use('/stats', statsRouter);
 router.use('/admin', adminRouter);
+router.use('/study', studyRouter);
 
 /**
  * @swagger
