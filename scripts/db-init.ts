@@ -13,7 +13,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { db } from '../server/db/index.js';
 import * as schema from '../server/db/schema.js';
-import { sql } from 'drizzle-orm';
+import { sql, eq, notInArray } from 'drizzle-orm';
 import type { CleanedQuestion } from '../server/types/index.js';
 
 const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
@@ -378,6 +378,90 @@ async function seedLessonsOnly(): Promise<void> {
   console.log(`   ✓ ${lessonList.length} lessons seeded`);
 }
 
+const OTHERS_LESSON_SLUG = 'les-others';
+const OTHERS_LESSON_TITLE = 'Others';
+
+async function assignOrphanQuestionsToOthersLesson(): Promise<void> {
+  console.log('📦 Assigning orphan questions to "Others" lesson...');
+
+  // Get the maximum lesson number to determine the next number
+  const maxLessonResult = await db
+    .select({ maxNumber: sql<number>`COALESCE(MAX(number), 0)` })
+    .from(schema.lessons);
+  const maxLessonNumber = Number(maxLessonResult[0]?.maxNumber ?? 0);
+  const othersLessonNumber = maxLessonNumber + 1;
+
+  // Check if "Others" lesson already exists
+  const existingOthersLesson = await db
+    .select()
+    .from(schema.lessons)
+    .where(eq(schema.lessons.slug, OTHERS_LESSON_SLUG));
+
+  let othersLessonId: number;
+
+  if (existingOthersLesson.length > 0) {
+    othersLessonId = existingOthersLesson[0].id;
+    console.log(`   ✓ "Others" lesson already exists (id: ${othersLessonId})`);
+  } else {
+    // Create the "Others" lesson
+    const [insertedLesson] = await db.insert(schema.lessons).values({
+      number: othersLessonNumber,
+      slug: OTHERS_LESSON_SLUG,
+      sortOrder: othersLessonNumber,
+    }).returning();
+
+    othersLessonId = insertedLesson.id;
+    console.log(`   ✓ Created "Others" lesson (id: ${othersLessonId})`);
+
+    // Add translation for the lesson
+    await db.insert(schema.lessonTranslations).values({
+      lessonId: othersLessonId,
+      locale: 'nl-BE',
+      title: OTHERS_LESSON_TITLE,
+      description: 'Questions that do not belong to any specific lesson',
+    }).onConflictDoNothing();
+  }
+
+  // Find all question IDs that already have lesson associations
+  const questionsWithLessons = await db
+    .select({ questionId: schema.questionLessons.questionId })
+    .from(schema.questionLessons);
+  
+  const questionIdsWithLessons = questionsWithLessons.map(q => q.questionId);
+
+  // Find all questions that don't have any lesson association
+  let orphanQuestions: { id: number }[];
+  
+  if (questionIdsWithLessons.length > 0) {
+    orphanQuestions = await db
+      .select({ id: schema.questions.id })
+      .from(schema.questions)
+      .where(notInArray(schema.questions.id, questionIdsWithLessons));
+  } else {
+    // All questions are orphans
+    orphanQuestions = await db
+      .select({ id: schema.questions.id })
+      .from(schema.questions);
+  }
+
+  if (orphanQuestions.length === 0) {
+    console.log('   ✓ No orphan questions found\n');
+    return;
+  }
+
+  // Assign orphan questions to the "Others" lesson
+  let assignedCount = 0;
+  for (const question of orphanQuestions) {
+    await db.insert(schema.questionLessons).values({
+      questionId: question.id,
+      lessonId: othersLessonId,
+    }).onConflictDoNothing();
+    assignedCount++;
+  }
+
+  console.log(`   ✓ Assigned ${assignedCount} orphan questions to "Others" lesson\n`);
+}
+
 async function main(): Promise<void> {
   console.log('🚀 DriveWise Database Initialization\n');
   console.log('='.repeat(50) + '\n');
@@ -397,6 +481,9 @@ async function main(): Promise<void> {
     console.log('   ℹ Database is empty, seeding required\n');
     await seedDatabase();
   }
+
+  // Step 3: Ensure orphan questions are assigned to "Others" lesson
+  await assignOrphanQuestionsToOthersLesson();
 
   console.log('='.repeat(50));
   console.log('✅ Database initialization complete!\n');
