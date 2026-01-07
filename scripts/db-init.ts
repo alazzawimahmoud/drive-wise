@@ -8,7 +8,7 @@
  */
 
 import 'dotenv/config';
-import { spawn } from 'child_process';
+import { execSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import { db } from '../server/db/index.js';
@@ -20,36 +20,27 @@ const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
 const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
 
 async function pushSchema(): Promise<void> {
-  console.log('📦 Pushing database schema...');
-  return new Promise((resolve, reject) => {
-    // Use --force to skip interactive confirmation prompts in CI/CD environments
-    // Set CI=true to ensure non-interactive mode
-    const child = spawn('npx', ['drizzle-kit', 'push', '--force'], {
-      stdio: ['pipe', 'inherit', 'inherit'],
+  console.log('📦 Applying database schema...');
+  try {
+    // Generate migrations from schema changes (non-interactive)
+    console.log('   Generating migrations...');
+    execSync('npx drizzle-kit generate', {
+      stdio: 'inherit',
       env: { ...process.env, CI: 'true' }
     });
-
-    // Automatically answer "no" to any truncation prompts
-    // This answers "No, add the constraint without truncating the table"
-    // The answer is buffered and will be consumed when the prompt appears
-    child.stdin.write('no\n');
-    child.stdin.end();
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        console.log('   ✓ Schema pushed successfully\n');
-        resolve();
-      } else {
-        console.error('   ✗ Failed to push schema');
-        reject(new Error(`drizzle-kit push exited with code ${code}`));
-      }
+    
+    // Apply migrations (non-interactive, no prompts)
+    console.log('   Applying migrations...');
+    execSync('npx drizzle-kit migrate', {
+      stdio: 'inherit',
+      env: { ...process.env, CI: 'true' }
     });
-
-    child.on('error', (error) => {
-      console.error('   ✗ Failed to push schema');
-      reject(error);
-    });
-  });
+    
+    console.log('   ✓ Schema applied successfully\n');
+  } catch (error) {
+    console.error('   ✗ Failed to apply schema');
+    throw error;
+  }
 }
 
 async function isDatabaseSeeded(): Promise<boolean> {
