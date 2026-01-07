@@ -12,6 +12,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { db } from '../server/db/index.js';
 import * as schema from '../server/db/schema.js';
+import { eq } from 'drizzle-orm';
 import type { CleanedQuestion, ExtractedLesson } from '../server/types/index.js';
 
 const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
@@ -195,7 +196,7 @@ async function main() {
       continue;
     }
 
-    // Insert question
+    // Upsert question
     const [insertedQuestion] = await db.insert(schema.questions).values({
       categoryId,
       regionId: regionId || null,
@@ -206,11 +207,23 @@ async function main() {
       source: q.source,
       imageAssetId: q.imageUuid ? assetMap.get(q.imageUuid) || null : null,
       videoAssetId: q.videoId ? assetMap.get(`video-${q.videoId}`) || null : null,
+    }).onConflictDoUpdate({
+      target: schema.questions.originalId,
+      set: {
+        categoryId,
+        regionId: regionId || null,
+        answerType: q.answerType,
+        answer: q.answer,
+        isMajorFault: q.isMajorFault,
+        source: q.source,
+        imageAssetId: q.imageUuid ? assetMap.get(q.imageUuid) || null : null,
+        videoAssetId: q.videoId ? assetMap.get(`video-${q.videoId}`) || null : null,
+      },
     }).returning();
 
     questionIdMap.set(q.originalId, insertedQuestion.id);
 
-    // Insert question translation
+    // Upsert question translation
     await db.insert(schema.questionTranslations).values({
       questionId: insertedQuestion.id,
       locale: 'nl-BE',
@@ -218,40 +231,81 @@ async function main() {
       questionTextOriginal: q.questionTextOriginal,
       explanation: q.explanation,
       explanationOriginal: q.explanationOriginal,
+    }).onConflictDoUpdate({
+      target: [schema.questionTranslations.questionId, schema.questionTranslations.locale],
+      set: {
+        questionText: q.questionText,
+        questionTextOriginal: q.questionTextOriginal,
+        explanation: q.explanation,
+        explanationOriginal: q.explanationOriginal,
+      },
     });
 
-    // Insert choices
+    // Upsert choices
+    const seedChoicePositions = new Set(q.choices.map(c => c.position));
+    
+    // Delete choices that are no longer in the seed data
+    const existingChoices = await db.select().from(schema.choices)
+      .where(eq(schema.choices.questionId, insertedQuestion.id));
+    
+    for (const existingChoice of existingChoices) {
+      if (!seedChoicePositions.has(existingChoice.position)) {
+        await db.delete(schema.choices)
+          .where(eq(schema.choices.id, existingChoice.id));
+      }
+    }
+    
+    // Upsert choices from seed data
     for (const choice of q.choices) {
       const [insertedChoice] = await db.insert(schema.choices).values({
         questionId: insertedQuestion.id,
         position: choice.position,
         imageAssetId: choice.imageUuid ? assetMap.get(choice.imageUuid) || null : null,
+      }).onConflictDoUpdate({
+        target: [schema.choices.questionId, schema.choices.position],
+        set: {
+          imageAssetId: choice.imageUuid ? assetMap.get(choice.imageUuid) || null : null,
+        },
       }).returning();
 
-      // Insert choice translation
+      // Upsert choice translation
       if (choice.text) {
         await db.insert(schema.choiceTranslations).values({
           choiceId: insertedChoice.id,
           locale: 'nl-BE',
           text: choice.text,
+        }).onConflictDoUpdate({
+          target: [schema.choiceTranslations.choiceId, schema.choiceTranslations.locale],
+          set: {
+            text: choice.text,
+          },
         });
       }
 
       choiceCount++;
     }
 
-    // Link question to lessons
+    // Link question to lessons (delete existing links first, then recreate)
     if (q.lessonNumbers && q.lessonNumbers.length > 0) {
+      // Delete existing question-lesson links for this question
+      await db.delete(schema.questionLessons)
+        .where(eq(schema.questionLessons.questionId, insertedQuestion.id));
+      
+      // Create new links
       for (const lessonNum of q.lessonNumbers) {
         const lessonId = lessonMap.get(lessonNum);
         if (lessonId) {
           await db.insert(schema.questionLessons).values({
             questionId: insertedQuestion.id,
             lessonId,
-          }).onConflictDoNothing();
+          });
           questionLessonCount++;
         }
       }
+    } else {
+      // If no lesson numbers, delete any existing links
+      await db.delete(schema.questionLessons)
+        .where(eq(schema.questionLessons.questionId, insertedQuestion.id));
     }
 
     questionCount++;

@@ -174,7 +174,7 @@ export const questions = pgTable('questions', {
   id: serial('id').primaryKey(),
   categoryId: integer('category_id').references(() => categories.id).notNull(),
   regionId: integer('region_id').references(() => regions.id),
-  originalId: varchar('original_id', { length: 100 }).notNull(), // Original ID from source data
+  originalId: varchar('original_id', { length: 100 }).unique().notNull(), // Original ID from source data
   answerType: varchar('answer_type', { length: 20 }).notNull(), // SINGLE_CHOICE, YES_NO, INPUT, ORDER
   answer: json('answer').notNull(), // Can be number, string, or array
   isMajorFault: boolean('is_major_fault').default(false).notNull(),
@@ -192,7 +192,9 @@ export const questionTranslations = pgTable('question_translations', {
   questionTextOriginal: text('question_text_original'), // Original before rephrasing
   explanation: text('explanation'),
   explanationOriginal: text('explanation_original'), // Original before rephrasing
-});
+}, (table) => [
+  uniqueIndex('question_translations_question_locale_idx').on(table.questionId, table.locale),
+]);
 
 // ============================================================================
 // CHOICES
@@ -203,14 +205,18 @@ export const choices = pgTable('choices', {
   questionId: integer('question_id').references(() => questions.id).notNull(),
   position: integer('position').notNull(), // 0, 1, 2, etc.
   imageAssetId: integer('image_asset_id').references(() => assets.id),
-});
+}, (table) => [
+  uniqueIndex('choices_question_position_idx').on(table.questionId, table.position),
+]);
 
 export const choiceTranslations = pgTable('choice_translations', {
   id: serial('id').primaryKey(),
   choiceId: integer('choice_id').references(() => choices.id).notNull(),
   locale: varchar('locale', { length: 10 }).references(() => locales.code).notNull(),
   text: text('text'),
-});
+}, (table) => [
+  uniqueIndex('choice_translations_choice_locale_idx').on(table.choiceId, table.locale),
+]);
 
 // ============================================================================
 // QUESTION-LESSON JUNCTION (many-to-many)

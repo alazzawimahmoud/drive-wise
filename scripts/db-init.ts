@@ -23,7 +23,11 @@ async function pushSchema(): Promise<void> {
   console.log('📦 Pushing database schema...');
   try {
     // Use --force to skip interactive confirmation prompts in CI/CD environments
-    execSync('npx drizzle-kit push --force', { stdio: 'inherit' });
+    // Set CI=true to ensure non-interactive mode
+    execSync('npx drizzle-kit push --force', { 
+      stdio: 'inherit',
+      env: { ...process.env, CI: 'true' }
+    });
     console.log('   ✓ Schema pushed successfully\n');
   } catch (error) {
     console.error('   ✗ Failed to push schema');
