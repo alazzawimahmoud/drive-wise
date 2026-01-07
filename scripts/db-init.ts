@@ -20,25 +20,17 @@ const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
 const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
 
 async function pushSchema(): Promise<void> {
-  console.log('📦 Applying database schema...');
+  console.log('📦 Pushing database schema...');
   try {
-    // Generate migrations from schema changes (non-interactive)
-    console.log('   Generating migrations...');
-    execSync('npx drizzle-kit generate', {
+    // Use push which handles existing tables gracefully
+    // Pipe "no" to answer truncation prompts non-interactively
+    execSync('echo "no" | npx drizzle-kit push', {
       stdio: 'inherit',
       env: { ...process.env, CI: 'true' }
     });
-    
-    // Apply migrations (non-interactive, no prompts)
-    console.log('   Applying migrations...');
-    execSync('npx drizzle-kit migrate', {
-      stdio: 'inherit',
-      env: { ...process.env, CI: 'true' }
-    });
-    
-    console.log('   ✓ Schema applied successfully\n');
+    console.log('   ✓ Schema pushed successfully\n');
   } catch (error) {
-    console.error('   ✗ Failed to apply schema');
+    console.error('   ✗ Failed to push schema');
     throw error;
   }
 }
