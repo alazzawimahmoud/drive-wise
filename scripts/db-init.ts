@@ -19,12 +19,31 @@ import type { CleanedQuestion } from '../server/types/index.js';
 const INPUT_FILE = path.join(process.cwd(), 'data', 'rephrased.json');
 const FALLBACK_FILE = path.join(process.cwd(), 'data', 'cleaned.json');
 
-async function pushSchema(): Promise<void> {
-  console.log('📦 Pushing database schema...');
+async function isSchemaInitialized(): Promise<boolean> {
   try {
-    // Use push which handles existing tables gracefully
-    // Pipe "no" to answer truncation prompts non-interactively
-    execSync('echo "no" | npx drizzle-kit push', {
+    // Check if core tables exist by querying them
+    await db.execute(sql`SELECT 1 FROM questions LIMIT 1`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function pushSchema(): Promise<void> {
+  console.log('📦 Checking database schema...');
+  
+  // Skip push if database is already initialized
+  // This avoids interactive prompts about constraints on existing tables
+  const schemaExists = await isSchemaInitialized();
+  if (schemaExists) {
+    console.log('   ✓ Database schema already exists, skipping push\n');
+    return;
+  }
+  
+  // Push schema for new/empty database (no interactive prompts for empty db)
+  console.log('   Initializing new database schema...');
+  try {
+    execSync('npx drizzle-kit push --force', {
       stdio: 'inherit',
       env: { ...process.env, CI: 'true' }
     });
