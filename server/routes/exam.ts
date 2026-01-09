@@ -308,6 +308,7 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
       .select({
         id: questions.id,
         answer: questions.answer,
+        answerType: questions.answerType,
         isMajorFault: questions.isMajorFault,
         categoryId: questions.categoryId,
         questionText: questionTranslations.questionText,
@@ -325,6 +326,27 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
 
     const answerMap = new Map(correctAnswers.map(q => [q.id, q]));
 
+    // Helper function to normalize INPUT answers for comparison
+    // Handles both string and number types, trims whitespace, and normalizes the format
+    const normalizeInputAnswer = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      
+      // Handle different input types
+      let normalized: string;
+      if (typeof value === 'number') {
+        // Convert number to string (e.g., 150 -> "150")
+        normalized = String(value);
+      } else if (typeof value === 'string') {
+        // Already a string, just trim
+        normalized = value.trim();
+      } else {
+        // Fallback: convert to string and trim
+        normalized = String(value).trim();
+      }
+      
+      return normalized;
+    };
+
     let correct = 0;
     let incorrect = 0;
     let majorFaults = 0;
@@ -336,7 +358,18 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
         return { questionId: submitted.questionId, error: 'Question not found' };
       }
 
-      const isCorrect = JSON.stringify(submitted.answer) === JSON.stringify(question.answer);
+      // Special handling for INPUT type questions - normalize strings and trim whitespace
+      let isCorrect: boolean;
+      // Check if answerType is INPUT (case-insensitive for safety)
+      const isInputType = question.answerType?.toUpperCase() === 'INPUT';
+      if (isInputType) {
+        const submittedNormalized = normalizeInputAnswer(submitted.answer);
+        const correctNormalized = normalizeInputAnswer(question.answer);
+        isCorrect = submittedNormalized === correctNormalized;
+      } else {
+        // For other types (SINGLE_CHOICE, YES_NO, ORDER), use strict JSON comparison
+        isCorrect = JSON.stringify(submitted.answer) === JSON.stringify(question.answer);
+      }
       
       if (isCorrect) {
         correct++;

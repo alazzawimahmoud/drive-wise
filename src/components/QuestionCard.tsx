@@ -69,9 +69,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     if (selectedAnswer === undefined || selectedAnswer === null) return false;
     if (question.answer === undefined || question.answer === null) return false;
     
-    // Deep comparison for arrays (ORDER) or loose comparison for strings/numbers
+    // For INPUT type questions, compare as trimmed strings (handles number vs string mismatch)
+    if (question.answerType === 'INPUT') {
+      const submittedStr = String(selectedAnswer).trim();
+      const correctStr = String(question.answer).trim();
+      return submittedStr === correctStr;
+    }
+    
+    // Deep comparison for arrays (ORDER) or strict comparison for choice-based questions
     return JSON.stringify(selectedAnswer) === JSON.stringify(question.answer);
-  }, [selectedAnswer, question.answer]);
+  }, [selectedAnswer, question.answer, question.answerType]);
 
   return (
     <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
