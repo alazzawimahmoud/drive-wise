@@ -81,7 +81,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   }, [selectedAnswer, question.answer, question.answerType]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+    <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto h-full flex flex-col">
       <div
         className={clsx(
           "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
@@ -143,15 +143,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             >
               {question.imageUrl && (
                 <div className={clsx(
-                  "w-full bg-white relative border-b border-slate-100 flex-shrink-0 overflow-hidden transition-all duration-500",
+                  "w-full bg-slate-100 relative border-b border-slate-100 overflow-hidden transition-all duration-500 aspect-[16/10] flex-shrink-0",
                   showFeedback 
-                    ? "max-h-[25vh] lg:max-h-[240px]" 
-                    : "aspect-[16/10] max-h-[35vh] md:max-h-none"
+                    ? "max-h-[15vh] md:max-h-[20vh] lg:max-h-[25vh]" 
+                    : "max-h-[25vh] md:max-h-[28vh] lg:max-h-[32vh]"
                 )}>
                   <img
                     src={question.imageUrl}
                     alt="Question scenario"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain bg-white"
                   />
                   {question.isMajorFault && (
                     <div className="absolute top-2 right-2 bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">
@@ -193,23 +193,29 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </div>
               )}
 
-              <div className={clsx(
-                "p-3 md:p-4 lg:p-6 flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden",
-                showFeedback && "lg:pt-4"
-              )}>
-                <h2 className={clsx(
-                  "font-bold text-slate-900 leading-tight",
-                  showFeedback 
-                    ? "text-sm md:text-base mb-2 md:mb-3" 
-                    : "text-sm md:text-base lg:text-lg mb-2 md:mb-3 lg:mb-4"
+              <div className="flex flex-col flex-1 min-h-0">
+                {/* Question text - fixed, doesn't scroll */}
+                <div className={clsx(
+                  "px-3 md:px-4 lg:px-6 pt-3 md:pt-4 lg:pt-6 flex-shrink-0",
+                  showFeedback && "lg:pt-4"
                 )}>
-                  {question.questionText}
-                </h2>
+                  <h2 className={clsx(
+                    "font-bold text-slate-900 leading-tight",
+                    showFeedback 
+                      ? "text-sm md:text-base mb-2 md:mb-3" 
+                      : "text-sm md:text-base lg:text-lg mb-2 md:mb-3 lg:mb-4"
+                  )}>
+                    {question.questionText}
+                  </h2>
+                </div>
 
-            <div className={clsx(
-              "space-y-2 md:space-y-3",
-              showFeedback && "lg:space-y-2"
-            )}>
+                {/* Answers - scrollable when needed */}
+                <div className="relative flex-1 min-h-0">
+                  <div className="h-full overflow-y-auto overflow-x-hidden px-3 md:px-4 lg:px-6 pb-3 md:pb-4 lg:pb-6">
+                    <div className={clsx(
+                      "space-y-2 md:space-y-3",
+                      showFeedback && "lg:space-y-2"
+                    )}>
               {question.answerType === 'INPUT' ? (
                 <div className="space-y-2 md:space-y-3">
                   <div className="relative">
@@ -477,8 +483,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   </p>
                 </motion.div>
               )}
+                    </div>
+                  </div>
+                  {/* Gradient fade indicator for scrollable content */}
+                  <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                </div>
               </div>
-            </div>
             </motion.div>
           </AnimatePresence>
 

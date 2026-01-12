@@ -150,7 +150,7 @@ export const ExamSession = () => {
               isLastQuestion={currentQuestionIndex === questions.length - 1}
             />
           ) : (
-            <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+            <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto h-full flex flex-col">
               <div className={clsx(
                 "bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 transition-colors flex flex-col h-full",
                 state.matches('completed') && results

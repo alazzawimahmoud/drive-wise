@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import { users, oauthAccounts } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { OAUTH_CALLBACK_URL } from '../config.js';
+import { AuthenticationError, DatabaseError } from '../middleware/errorHandler.js';
 
 // ============================================================================
 // TYPES
@@ -38,44 +39,103 @@ export interface AuthenticatedUser {
  * This is the core function used by all OAuth strategies
  */
 export async function findOrCreateUser(profile: OAuthProfile): Promise<AuthenticatedUser> {
-  // Check if OAuth account exists
-  const [existingAccount] = await db
-    .select({
-      userId: oauthAccounts.userId,
-    })
-    .from(oauthAccounts)
-    .where(and(
-      eq(oauthAccounts.provider, profile.provider),
-      eq(oauthAccounts.providerAccountId, profile.providerAccountId)
-    ))
-    .limit(1);
-
-  if (existingAccount) {
-    // Update OAuth tokens and fetch user
-    await db
-      .update(oauthAccounts)
-      .set({
-        accessToken: profile.accessToken,
-        refreshToken: profile.refreshToken,
-        tokenExpiresAt: profile.tokenExpiresAt,
-        updatedAt: new Date(),
+  try {
+    // Check if OAuth account exists
+    const [existingAccount] = await db
+      .select({
+        userId: oauthAccounts.userId,
       })
+      .from(oauthAccounts)
       .where(and(
         eq(oauthAccounts.provider, profile.provider),
         eq(oauthAccounts.providerAccountId, profile.providerAccountId)
-      ));
+      ))
+      .limit(1);
 
-    // Update user's last login and refresh profile data
-    const [user] = await db
-      .update(users)
-      .set({
-        displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl || undefined,
-        lastLoginAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, existingAccount.userId))
-      .returning();
+    if (existingAccount) {
+      // Update OAuth tokens and fetch user
+      await db
+        .update(oauthAccounts)
+        .set({
+          accessToken: profile.accessToken,
+          refreshToken: profile.refreshToken,
+          tokenExpiresAt: profile.tokenExpiresAt,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(oauthAccounts.provider, profile.provider),
+          eq(oauthAccounts.providerAccountId, profile.providerAccountId)
+        ));
+
+      // Update user's last login and refresh profile data
+      const [user] = await db
+        .update(users)
+        .set({
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarUrl || undefined,
+          lastLoginAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existingAccount.userId))
+        .returning();
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        preferredLocale: user.preferredLocale,
+        preferredRegion: user.preferredRegion,
+      };
+    }
+
+    // Check if a user with this email already exists (to link accounts)
+    let user;
+    if (profile.email) {
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, profile.email))
+        .limit(1);
+      
+      if (existingUser) {
+        user = existingUser;
+        // Update profile data
+        await db
+          .update(users)
+          .set({
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl || existingUser.avatarUrl,
+            lastLoginAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id));
+      }
+    }
+
+    // Create new user if not found
+    if (!user) {
+      [user] = await db
+        .insert(users)
+        .values({
+          email: profile.email || null,
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarUrl || null,
+        })
+        .returning();
+    }
+
+    // Create OAuth account link
+    await db
+      .insert(oauthAccounts)
+      .values({
+        userId: user.id,
+        provider: profile.provider,
+        providerAccountId: profile.providerAccountId,
+        accessToken: profile.accessToken,
+        refreshToken: profile.refreshToken,
+        tokenExpiresAt: profile.tokenExpiresAt,
+      });
 
     return {
       id: user.id,
@@ -85,98 +145,69 @@ export async function findOrCreateUser(profile: OAuthProfile): Promise<Authentic
       preferredLocale: user.preferredLocale,
       preferredRegion: user.preferredRegion,
     };
-  }
-
-  // Check if a user with this email already exists (to link accounts)
-  let user;
-  if (profile.email) {
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, profile.email))
-      .limit(1);
-    
-    if (existingUser) {
-      user = existingUser;
-      // Update profile data
-      await db
-        .update(users)
-        .set({
-          displayName: profile.displayName,
-          avatarUrl: profile.avatarUrl || existingUser.avatarUrl,
-          lastLoginAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, existingUser.id));
-    }
-  }
-
-  // Create new user if not found
-  if (!user) {
-    [user] = await db
-      .insert(users)
-      .values({
-        email: profile.email || null,
-        displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl || null,
-      })
-      .returning();
-  }
-
-  // Create OAuth account link
-  await db
-    .insert(oauthAccounts)
-    .values({
-      userId: user.id,
+  } catch (error) {
+    // Log the full error for debugging (server-side only)
+    console.error('Database error in findOrCreateUser:', {
       provider: profile.provider,
-      providerAccountId: profile.providerAccountId,
-      accessToken: profile.accessToken,
-      refreshToken: profile.refreshToken,
-      tokenExpiresAt: profile.tokenExpiresAt,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
     });
-
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
-    preferredLocale: user.preferredLocale,
-    preferredRegion: user.preferredRegion,
-  };
+    
+    // Throw a safe error that won't expose database details
+    throw new AuthenticationError('Unable to complete sign-in. Please try again later.');
+  }
 }
 
 /**
  * Get user by ID
  */
 export async function getUserById(id: number): Promise<AuthenticatedUser | null> {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+  try {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
 
-  if (!user) return null;
+    if (!user) return null;
 
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
-    preferredLocale: user.preferredLocale,
-    preferredRegion: user.preferredRegion,
-  };
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      preferredLocale: user.preferredLocale,
+      preferredRegion: user.preferredRegion,
+    };
+  } catch (error) {
+    console.error('Database error in getUserById:', {
+      userId: id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+    throw new DatabaseError('Unable to retrieve user information.');
+  }
 }
 
 /**
  * Get user's linked OAuth providers
  */
 export async function getUserProviders(userId: number): Promise<string[]> {
-  const accounts = await db
-    .select({ provider: oauthAccounts.provider })
-    .from(oauthAccounts)
-    .where(eq(oauthAccounts.userId, userId));
+  try {
+    const accounts = await db
+      .select({ provider: oauthAccounts.provider })
+      .from(oauthAccounts)
+      .where(eq(oauthAccounts.userId, userId));
 
-  return accounts.map(a => a.provider);
+    return accounts.map(a => a.provider);
+  } catch (error) {
+    console.error('Database error in getUserProviders:', {
+      userId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+    throw new DatabaseError('Unable to retrieve provider information.');
+  }
 }
 
 // ============================================================================

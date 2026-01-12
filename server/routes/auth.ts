@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { passport, getUserById, getUserProviders, getAvailableProviders } from '../auth/passport.js';
 import { db } from '../db/index.js';
 import { users, oauthAccounts } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { generateToken, requireAuth } from '../middleware/auth.js';
 import { FRONTEND_URL } from '../config.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const authRouter = Router();
 
@@ -89,19 +90,37 @@ authRouter.get('/google', passport.authenticate('google', {
  *       302:
  *         description: Redirect to frontend with token
  */
-authRouter.get('/google/callback', 
-  passport.authenticate('google', { session: false, failureRedirect: '/auth/error' }),
-  (req, res) => {
-    if (!req.user) {
-      return res.redirect('/auth/error?message=Authentication failed');
+authRouter.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('google', { session: false }, (err: Error | null, user: Express.User | false | null, info: { message?: string } | undefined) => {
+    // Handle authentication errors gracefully
+    if (err) {
+      console.error('OAuth authentication error:', {
+        name: err.name,
+        message: err.message,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Redirect to frontend with error - never expose internal error details
+      return res.redirect(`${FRONTEND_URL}/auth/callback?error=auth_failed&message=${encodeURIComponent('Authentication failed. Please try again.')}`);
     }
 
-    const token = generateToken(req.user);
-    
-    // Redirect to frontend with token
-    res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
-  }
-);
+    // Handle case where no user was returned
+    if (!user) {
+      const message = info?.message || 'Authentication failed';
+      console.error('OAuth failed - no user returned:', { info, timestamp: new Date().toISOString() });
+      return res.redirect(`${FRONTEND_URL}/auth/callback?error=auth_failed&message=${encodeURIComponent(message)}`);
+    }
+
+    // Success - generate token and redirect
+    try {
+      const token = generateToken(user);
+      res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
+    } catch (tokenError) {
+      console.error('Token generation error:', tokenError);
+      res.redirect(`${FRONTEND_URL}/auth/callback?error=token_failed&message=${encodeURIComponent('Failed to complete authentication.')}`);
+    }
+  })(req, res, next);
+});
 
 // ============================================================================
 // USER PROFILE & MANAGEMENT
@@ -136,30 +155,25 @@ authRouter.get('/google/callback',
  *       404:
  *         description: User not found
  */
-authRouter.get('/me', requireAuth, async (req, res) => {
-  try {
-    const user = await getUserById(req.user!.id);
+authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
+  const user = await getUserById(req.user!.id);
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const providers = await getUserProviders(user.id);
-
-    res.json({
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      preferredLocale: user.preferredLocale,
-      preferredRegion: user.preferredRegion,
-      providers,
-    });
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
+  if (!user) {
+    return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
   }
-});
+
+  const providers = await getUserProviders(user.id);
+
+  res.json({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    preferredLocale: user.preferredLocale,
+    preferredRegion: user.preferredRegion,
+    providers,
+  });
+}));
 
 /**
  * @swagger
@@ -194,41 +208,36 @@ authRouter.get('/me', requireAuth, async (req, res) => {
  *       401:
  *         description: Not authenticated
  */
-authRouter.patch('/me', requireAuth, async (req, res) => {
-  try {
-    const { preferredLocale, preferredRegion, displayName } = req.body;
-    
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    
-    if (preferredLocale && ['nl-BE', 'fr-BE', 'de-BE', 'en'].includes(preferredLocale)) {
-      updateData.preferredLocale = preferredLocale;
-    }
-    if (preferredRegion && ['national', 'brussels', 'flanders', 'wallonia'].includes(preferredRegion)) {
-      updateData.preferredRegion = preferredRegion;
-    }
-    if (displayName && typeof displayName === 'string' && displayName.trim().length > 0) {
-      updateData.displayName = displayName.trim();
-    }
-
-    const [user] = await db
-      .update(users)
-      .set(updateData)
-      .where(eq(users.id, req.user!.id))
-      .returning();
-
-    res.json({
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      preferredLocale: user.preferredLocale,
-      preferredRegion: user.preferredRegion,
-    });
-  } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ error: 'Failed to update user' });
+authRouter.patch('/me', requireAuth, asyncHandler(async (req, res) => {
+  const { preferredLocale, preferredRegion, displayName } = req.body;
+  
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
+  
+  if (preferredLocale && ['nl-BE', 'fr-BE', 'de-BE', 'en'].includes(preferredLocale)) {
+    updateData.preferredLocale = preferredLocale;
   }
-});
+  if (preferredRegion && ['national', 'brussels', 'flanders', 'wallonia'].includes(preferredRegion)) {
+    updateData.preferredRegion = preferredRegion;
+  }
+  if (displayName && typeof displayName === 'string' && displayName.trim().length > 0) {
+    updateData.displayName = displayName.trim();
+  }
+
+  const [user] = await db
+    .update(users)
+    .set(updateData)
+    .where(eq(users.id, req.user!.id))
+    .returning();
+
+  res.json({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    preferredLocale: user.preferredLocale,
+    preferredRegion: user.preferredRegion,
+  });
+}));
 
 /**
  * @swagger
@@ -252,28 +261,23 @@ authRouter.patch('/me', requireAuth, async (req, res) => {
  *       401:
  *         description: Not authenticated
  */
-authRouter.post('/refresh', requireAuth, async (req, res) => {
-  try {
-    const user = await getUserById(req.user!.id);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const token = generateToken(user);
-
-    // Update last login
-    await db
-      .update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, req.user!.id));
-
-    res.json({ token });
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    res.status(500).json({ error: 'Failed to refresh token' });
+authRouter.post('/refresh', requireAuth, asyncHandler(async (req, res) => {
+  const user = await getUserById(req.user!.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
   }
-});
+
+  const token = generateToken(user);
+
+  // Update last login
+  await db
+    .update(users)
+    .set({ lastLoginAt: new Date() })
+    .where(eq(users.id, req.user!.id));
+
+  res.json({ token });
+}));
 
 /**
  * @swagger
@@ -302,39 +306,35 @@ authRouter.post('/refresh', requireAuth, async (req, res) => {
  *       404:
  *         description: Provider not linked
  */
-authRouter.delete('/unlink/:provider', requireAuth, async (req, res) => {
-  try {
-    const { provider } = req.params;
-    const userId = req.user!.id;
+authRouter.delete('/unlink/:provider', requireAuth, asyncHandler(async (req, res) => {
+  const { provider } = req.params;
+  const userId = req.user!.id;
 
-    // Check how many providers are linked
-    const providers = await getUserProviders(userId);
-    
-    if (providers.length <= 1) {
-      return res.status(400).json({ 
-        error: 'Cannot unlink only provider',
-        message: 'You must have at least one authentication method linked'
-      });
-    }
-
-    if (!providers.includes(provider)) {
-      return res.status(404).json({ error: 'Provider not linked to this account' });
-    }
-
-    // Remove the OAuth account
-    await db
-      .delete(oauthAccounts)
-      .where(and(
-        eq(oauthAccounts.userId, userId),
-        eq(oauthAccounts.provider, provider)
-      ));
-
-    res.json({ 
-      message: `${provider} unlinked successfully`,
-      remainingProviders: providers.filter(p => p !== provider)
+  // Check how many providers are linked
+  const providers = await getUserProviders(userId);
+  
+  if (providers.length <= 1) {
+    return res.status(400).json({ 
+      error: 'Cannot unlink only provider',
+      code: 'VALIDATION_ERROR',
+      message: 'You must have at least one authentication method linked'
     });
-  } catch (error) {
-    console.error('Error unlinking provider:', error);
-    res.status(500).json({ error: 'Failed to unlink provider' });
   }
-});
+
+  if (!providers.includes(provider)) {
+    return res.status(404).json({ error: 'Provider not linked to this account', code: 'NOT_FOUND' });
+  }
+
+  // Remove the OAuth account
+  await db
+    .delete(oauthAccounts)
+    .where(and(
+      eq(oauthAccounts.userId, userId),
+      eq(oauthAccounts.provider, provider)
+    ));
+
+  res.json({ 
+    message: `${provider} unlinked successfully`,
+    remainingProviders: providers.filter(p => p !== provider)
+  });
+}));
