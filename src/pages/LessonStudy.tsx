@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   Maximize2,
   Minimize2,
-  HelpCircle
+  HelpCircle,
+  RefreshCcw
 } from 'lucide-react';
 import { StudyCard } from '../components/StudyCard';
 import { StudyCardImmersive } from '../components/StudyCardImmersive';
@@ -83,6 +84,7 @@ export const LessonStudy = () => {
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     majorFaultsOnly: false,
     unseenOnly: false,
@@ -186,6 +188,26 @@ export const LessonStudy = () => {
       queryClient.invalidateQueries({ queryKey: ['study-lesson', slug] });
     },
   });
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/study/lessons/${slug}/reset`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['study-lesson', slug] });
+      queryClient.invalidateQueries({ queryKey: ['study-progress'] });
+      setCurrentIndex(0);
+      setShowResetConfirm(false);
+    },
+  });
+
+  const handleResetLesson = () => {
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = () => {
+    resetMutation.mutate();
+  };
 
   const handleMarkStatus = (status: 'seen' | 'mastered' | 'needs_review') => {
     if (!data?.questions[currentIndex]) return;
@@ -299,9 +321,19 @@ export const LessonStudy = () => {
         <header className="bg-white border-b border-slate-200 px-4 py-4">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-black text-slate-900">
-                Lesson {lesson.number}: {lesson.title}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black text-slate-900">
+                  Lesson {lesson.number}: {lesson.title}
+                </h1>
+                <button
+                  onClick={handleResetLesson}
+                  disabled={resetMutation.isPending}
+                  className="p-1 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                  title="Reset lesson progress"
+                >
+                  <RefreshCcw size={14} className={resetMutation.isPending ? "animate-spin" : ""} />
+                </button>
+              </div>
               <p className="text-sm text-slate-500">{lesson.questionCount} questions total</p>
             </div>
             <button
@@ -389,6 +421,38 @@ export const LessonStudy = () => {
             </div>
           </div>
         </div>
+
+        {/* Reset Confirmation Modal */}
+        {showResetConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                  <RefreshCcw size={20} className="text-rose-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Reset Progress</h3>
+              </div>
+              <p className="text-slate-600 text-sm mb-6">
+                This will reset all progress for this lesson. All questions will be marked as unseen.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReset}
+                  disabled={resetMutation.isPending}
+                  className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
+                >
+                  {resetMutation.isPending ? 'Resetting...' : 'Reset'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -425,12 +489,22 @@ export const LessonStudy = () => {
             )}
           </div>
           
-          <p className={clsx(
-            "font-semibold text-slate-600 truncate",
-            showImmersive ? "text-sm max-w-[50%]" : "text-xs max-w-[40%]"
-          )}>
-            {lesson.title}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={clsx(
+              "font-semibold text-slate-600",
+              showImmersive ? "text-sm" : "text-xs"
+            )}>
+              {lesson.title}
+            </p>
+            <button
+              onClick={handleResetLesson}
+              disabled={resetMutation.isPending}
+              className="p-1 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+              title="Reset lesson progress"
+            >
+              <RefreshCcw size={12} className={resetMutation.isPending ? "animate-spin" : ""} />
+            </button>
+          </div>
           
           <div className="flex items-center gap-2">
             {/* Quiz Mode Toggle */}
@@ -585,6 +659,38 @@ export const LessonStudy = () => {
           </>
         )}
       </main>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                <RefreshCcw size={20} className="text-rose-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Reset Progress</h3>
+            </div>
+            <p className="text-slate-600 text-sm mb-6">
+              This will reset all progress for this lesson. All questions will be marked as unseen.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReset}
+                disabled={resetMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
+              >
+                {resetMutation.isPending ? 'Resetting...' : 'Reset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -646,6 +646,94 @@ studyRouter.post('/mark', requireAuth, async (req, res) => {
  *       401:
  *         description: Not authenticated
  */
+/**
+ * @swagger
+ * /api/study/lessons/{slug}/reset:
+ *   post:
+ *     summary: Reset study progress for a lesson
+ *     description: Deletes all study statuses for questions in a lesson and resets lesson progress
+ *     tags: [Study]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: slug
+ *         in: path
+ *         required: true
+ *         description: Lesson slug (e.g., les-12)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Progress reset successfully
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Lesson not found
+ */
+studyRouter.post('/lessons/:slug/reset', requireAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const userId = req.user!.id;
+
+    // Get the lesson
+    const [lesson] = await db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(eq(lessons.slug, slug))
+      .limit(1);
+
+    if (!lesson) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
+
+    // Get question IDs for this lesson
+    const lessonQuestionIds = await db
+      .select({ questionId: questionLessons.questionId })
+      .from(questionLessons)
+      .where(eq(questionLessons.lessonId, lesson.id));
+
+    const questionIds = [...new Set(lessonQuestionIds.map(q => q.questionId))];
+
+    // Delete study statuses for these questions
+    if (questionIds.length > 0) {
+      await db
+        .delete(studyQuestionStatus)
+        .where(and(
+          eq(studyQuestionStatus.userId, userId),
+          inArray(studyQuestionStatus.questionId, questionIds)
+        ));
+    }
+
+    // Reset lesson progress
+    await db
+      .delete(studyProgress)
+      .where(and(
+        eq(studyProgress.userId, userId),
+        eq(studyProgress.lessonId, lesson.id)
+      ));
+
+    res.json({ success: true, questionsReset: questionIds.length });
+  } catch (error) {
+    console.error('Error resetting lesson progress:', error);
+    res.status(500).json({ error: 'Failed to reset progress' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/study/progress:
+ *   get:
+ *     summary: Get overall study progress
+ *     description: Returns aggregated study progress across all lessons
+ *     tags: [Study]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Study progress overview
+ *       401:
+ *         description: Not authenticated
+ */
 studyRouter.get('/progress', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.id;
