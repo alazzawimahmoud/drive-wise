@@ -157,8 +157,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 )}>
                   {/* Loading skeleton */}
                   {!imageLoaded && (
-                    <div className="absolute inset-0 bg-slate-100 animate-pulse flex items-center justify-center">
-                      <div className="w-8 h-8 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+                    <div className="absolute inset-0 bg-white flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
                     </div>
                   )}
                   <img
