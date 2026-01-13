@@ -14,7 +14,8 @@ import {
   Maximize2,
   Minimize2,
   HelpCircle,
-  RefreshCcw
+  RefreshCcw,
+  Keyboard
 } from 'lucide-react';
 import { StudyCard } from '../components/StudyCard';
 import { StudyCardImmersive } from '../components/StudyCardImmersive';
@@ -85,6 +86,7 @@ export const LessonStudy = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     majorFaultsOnly: false,
     unseenOnly: false,
@@ -257,10 +259,14 @@ export const LessonStudy = () => {
         e.preventDefault();
         handleNext();
         break;
-      case 'r':
-      case 'R':
+      case 'i':
+      case 'I':
         e.preventDefault();
         handleMarkStatus('needs_review');
+        break;
+      case '?':
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
         break;
       case 'b':
       case 'B':
@@ -547,11 +553,20 @@ export const LessonStudy = () => {
             </button>
 
             <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard size={16} />
+            </button>
+
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className={clsx(
                 "relative p-1.5 rounded-lg transition-colors",
                 activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
               )}
+              title="Filters"
             >
               <Filter size={16} />
               {activeFilterCount > 0 && (
@@ -693,6 +708,39 @@ export const LessonStudy = () => {
           </div>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <Keyboard size={20} className="text-indigo-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Keyboard Shortcuts</h3>
+              </div>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <ShortcutRow keys={['←']} description="Previous question" />
+              <ShortcutRow keys={['→']} description="Next question" />
+              <ShortcutRow keys={['Space']} description="Mark as mastered & next" />
+              <ShortcutRow keys={['I']} description="Mark for review" />
+              <ShortcutRow keys={['B']} description="Toggle bookmark" />
+              <ShortcutRow keys={['?']} description="Show shortcuts" />
+            </div>
+            <p className="text-xs text-slate-400 mt-4 text-center">
+              Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-mono">?</kbd> to toggle this panel
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -721,5 +769,19 @@ const FilterButton = ({
     {icon}
     {label}
   </button>
+);
+
+// Shortcut Row Component
+const ShortcutRow = ({ keys, description }: { keys: string[]; description: string }) => (
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-slate-600">{description}</span>
+    <div className="flex gap-1">
+      {keys.map((key, i) => (
+        <kbd key={i} className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-mono font-bold text-slate-700 min-w-[28px] text-center">
+          {key}
+        </kbd>
+      ))}
+    </div>
+  </div>
 );
 

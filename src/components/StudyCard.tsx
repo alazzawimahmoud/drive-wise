@@ -397,6 +397,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
             disabled={isFirstQuestion}
             className="p-2 rounded-full text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             aria-label="Previous"
+            title="Previous (←)"
           >
             <ChevronLeft size={20} />
           </button>
@@ -411,6 +412,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                   : "text-amber-600 hover:bg-amber-50"
               )}
               aria-label="Review Later"
+              title="Review (I)"
             >
               <RotateCcw size={20} />
             </button>
@@ -424,6 +426,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                   : "hover:bg-slate-100 text-slate-400"
               )}
               aria-label="Bookmark"
+              title="Bookmark (B)"
             >
               <Bookmark size={20} fill={question.isBookmarked ? 'currentColor' : 'none'} />
             </button>
@@ -442,6 +445,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                   : "text-emerald-600 hover:bg-emerald-50"
               )}
               aria-label="Got It"
+              title="Got it! (Space)"
             >
               <Check size={20} />
             </button>
@@ -457,6 +461,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                 : "text-indigo-600 hover:bg-indigo-50"
             )}
             aria-label="Next"
+            title="Next (→)"
           >
             <ChevronRight size={20} />
           </button>

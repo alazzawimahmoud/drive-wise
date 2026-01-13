@@ -451,6 +451,7 @@ export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
                 ? "text-slate-300 cursor-not-allowed"
                 : "text-slate-600 hover:bg-slate-200"
             )}
+            title="Previous (←)"
           >
             <ChevronLeft size={18} />
             <span className="hidden sm:inline">Previous</span>
@@ -466,7 +467,7 @@ export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
                   ? "bg-amber-500 text-white shadow-sm"
                   : "text-amber-600 hover:bg-amber-50 border border-amber-200"
               )}
-              title="Mark for review (R)"
+              title="Review (I)"
             >
               <RotateCcw size={16} />
               <span className="hidden md:inline">Review</span>
@@ -515,6 +516,7 @@ export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
                 ? "text-slate-300 cursor-not-allowed"
                 : "text-indigo-600 hover:bg-indigo-50"
             )}
+            title="Next (→)"
           >
             <span className="hidden sm:inline">Next</span>
             <ChevronRight size={18} />
