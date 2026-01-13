@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { ChevronLeft, ChevronRight, Flag } from 'lucide-react';
@@ -60,6 +60,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   isFirstQuestion,
   isLastQuestion,
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Reset image loaded state when question changes
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [question.id]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -148,10 +155,20 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     ? "max-h-[15vh] md:max-h-[20vh] lg:max-h-[25vh]" 
                     : "max-h-[25vh] md:max-h-[28vh] lg:max-h-[32vh]"
                 )}>
+                  {/* Loading skeleton */}
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 bg-slate-100 animate-pulse flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+                    </div>
+                  )}
                   <img
                     src={question.imageUrl}
                     alt="Question scenario"
-                    className="w-full h-full object-contain bg-white"
+                    onLoad={() => setImageLoaded(true)}
+                    className={clsx(
+                      "w-full h-full object-contain bg-white transition-opacity duration-300",
+                      imageLoaded ? "opacity-100" : "opacity-0"
+                    )}
                   />
                   {question.isMajorFault && (
                     <div className="absolute top-2 right-2 bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">
