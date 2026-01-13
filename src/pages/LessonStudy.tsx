@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
@@ -10,10 +10,15 @@ import {
   Shuffle,
   Filter,
   X,
-  ChevronLeft
+  ChevronLeft,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { StudyCard } from '../components/StudyCard';
+import { StudyCardImmersive } from '../components/StudyCardImmersive';
 import api from '../lib/api';
+
+type ViewMode = 'compact' | 'immersive';
 
 interface StudyQuestion {
   id: number;
@@ -84,6 +89,45 @@ export const LessonStudy = () => {
     bookmarked: false,
     shuffle: false,
   });
+  
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('studyViewMode');
+      if (saved === 'compact' || saved === 'immersive') {
+        return saved;
+      }
+    }
+    return 'compact';
+  });
+
+  // Track if screen is large enough for immersive view
+  const [isLargeScreen, setIsLargeScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(min-width: 1024px)').matches;
+    }
+    return false;
+  });
+
+  // Listen for screen size changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsLargeScreen(e.matches);
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Persist view mode preference
+  useEffect(() => {
+    localStorage.setItem('studyViewMode', viewMode);
+  }, [viewMode]);
+
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'compact' ? 'immersive' : 'compact');
+  };
 
   const { data, isLoading } = useQuery<LessonData>({
     queryKey: ['study-lesson', slug, filters],
@@ -160,6 +204,48 @@ export const LessonStudy = () => {
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  // Keyboard shortcuts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        handlePrevious();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        handleNext();
+        break;
+      case 'r':
+      case 'R':
+        e.preventDefault();
+        handleMarkStatus('needs_review');
+        break;
+      case 'b':
+      case 'B':
+        e.preventDefault();
+        handleToggleBookmark();
+        break;
+      case ' ':
+      case 'Enter':
+        e.preventDefault();
+        handleMarkStatus('mastered');
+        if (data && currentIndex < data.questions.length - 1) {
+          handleNext();
+        }
+        break;
+    }
+  }, [currentIndex, data]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (isLoading) {
     return (
@@ -293,11 +379,20 @@ export const LessonStudy = () => {
     );
   }
 
+  // Determine if we should show immersive view (only on large screens AND preference is set)
+  const showImmersive = viewMode === 'immersive' && isLargeScreen;
+
   return (
     <div className="fixed inset-0 bg-slate-50 flex flex-col overflow-hidden">
-      {/* Header with Back Button, Question Counter, and Filters */}
-      <header className="bg-white border-b border-slate-200 px-3 py-2 flex-shrink-0">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+      {/* Header with Back Button, Question Counter, View Toggle, and Filters */}
+      <header className={clsx(
+        "bg-white border-b border-slate-200 px-3 py-2 flex-shrink-0",
+        showImmersive && "lg:px-6"
+      )}>
+        <div className={clsx(
+          "flex items-center justify-between",
+          !showImmersive && "max-w-2xl mx-auto"
+        )}>
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/lessons')}
@@ -306,34 +401,71 @@ export const LessonStudy = () => {
             >
               <ChevronLeft size={18} className="text-slate-600" />
             </button>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-black text-slate-900">{currentIndex + 1}</span>
-              <span className="text-slate-300 font-bold text-xs">/</span>
-              <span className="text-xs font-bold text-slate-400">{questions.length}</span>
-            </div>
+            {/* Question counter only shown in compact mode */}
+            {!showImmersive && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-black text-slate-900">{currentIndex + 1}</span>
+                <span className="text-slate-300 font-bold text-xs">/</span>
+                <span className="text-xs font-bold text-slate-400">{questions.length}</span>
+              </div>
+            )}
           </div>
-          <p className="text-xs font-semibold text-slate-600 truncate max-w-[40%]">
+          
+          <p className={clsx(
+            "font-semibold text-slate-600 truncate",
+            showImmersive ? "text-sm max-w-[50%]" : "text-xs max-w-[40%]"
+          )}>
             {lesson.title}
           </p>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={clsx(
-              "relative p-1.5 rounded-lg transition-colors",
-              activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
-            )}
-          >
-            <Filter size={16} />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* View Toggle - Only show on lg screens */}
+            <button
+              onClick={toggleViewMode}
+              className={clsx(
+                "hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                showImmersive 
+                  ? "bg-indigo-600 text-white" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+              title={showImmersive ? "Switch to Compact View" : "Switch to Immersive View"}
+            >
+              {showImmersive ? (
+                <>
+                  <Minimize2 size={14} />
+                  <span>Compact</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 size={14} />
+                  <span>Immersive</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={clsx(
+                "relative p-1.5 rounded-lg transition-colors",
+                activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
+              )}
+            >
+              <Filter size={16} />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         
         {/* Filter Panel */}
         {showFilters && (
-          <div className="max-w-2xl mx-auto mt-3 p-3 bg-slate-50 rounded-xl">
+          <div className={clsx(
+            "mt-3 p-3 bg-slate-50 rounded-xl",
+            !showImmersive && "max-w-2xl mx-auto"
+          )}>
             <div className="flex flex-wrap gap-2">
               <FilterButton 
                 active={filters.majorFaultsOnly} 
@@ -385,18 +517,41 @@ export const LessonStudy = () => {
         )}
       </header>
 
-      {/* Study Card */}
-      <main className="flex-1 min-h-0 overflow-hidden p-2 md:p-4">
+      {/* Study Card - Compact or Immersive */}
+      <main className={clsx(
+        "flex-1 min-h-0 overflow-hidden",
+        showImmersive ? "p-3 lg:p-4" : "p-2 md:p-4"
+      )}>
         {currentQuestion && (
-          <StudyCard
-            question={currentQuestion}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-            onMarkStatus={handleMarkStatus}
-            onToggleBookmark={handleToggleBookmark}
-            isFirstQuestion={currentIndex === 0}
-            isLastQuestion={currentIndex === questions.length - 1}
-          />
+          <>
+            {/* Compact View (default, always used on small screens) */}
+            <div className={clsx(showImmersive ? "hidden" : "block h-full")}>
+              <StudyCard
+                question={currentQuestion}
+                onPrevious={handlePrevious}
+                onNext={handleNext}
+                onMarkStatus={handleMarkStatus}
+                onToggleBookmark={handleToggleBookmark}
+                isFirstQuestion={currentIndex === 0}
+                isLastQuestion={currentIndex === questions.length - 1}
+              />
+            </div>
+            
+            {/* Immersive View (only on lg+ screens when enabled) */}
+            <div className={clsx(showImmersive ? "block h-full" : "hidden")}>
+              <StudyCardImmersive
+                question={currentQuestion}
+                onPrevious={handlePrevious}
+                onNext={handleNext}
+                onMarkStatus={handleMarkStatus}
+                onToggleBookmark={handleToggleBookmark}
+                isFirstQuestion={currentIndex === 0}
+                isLastQuestion={currentIndex === questions.length - 1}
+                currentIndex={currentIndex}
+                totalQuestions={questions.length}
+              />
+            </div>
+          </>
         )}
       </main>
     </div>
