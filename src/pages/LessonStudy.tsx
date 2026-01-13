@@ -638,6 +638,7 @@ export const LessonStudy = () => {
                 isFirstQuestion={currentIndex === 0}
                 isLastQuestion={currentIndex === questions.length - 1}
                 quizMode={quizMode}
+                willBeFilteredOnMark={filters.unseenOnly || filters.needsReview}
               />
             </div>
             
@@ -654,6 +655,7 @@ export const LessonStudy = () => {
                 currentIndex={currentIndex}
                 totalQuestions={questions.length}
                 quizMode={quizMode}
+                willBeFilteredOnMark={filters.unseenOnly || filters.needsReview}
               />
             </div>
           </>

@@ -46,6 +46,8 @@ interface StudyCardProps {
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
   quizMode: boolean;
+  /** When true, the current question will be removed from the list after marking (e.g., unseen filter active) */
+  willBeFilteredOnMark?: boolean;
 }
 
 export const StudyCard: React.FC<StudyCardProps> = ({
@@ -57,6 +59,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   isFirstQuestion,
   isLastQuestion,
   quizMode,
+  willBeFilteredOnMark = false,
 }) => {
   const correctAnswer = question.answer;
   
@@ -428,7 +431,9 @@ export const StudyCard: React.FC<StudyCardProps> = ({
             <button
               onClick={() => {
                 onMarkStatus('mastered');
-                if (!isLastQuestion) onNext();
+                // Don't auto-advance if the question will be removed from the filtered list
+                // (e.g., when "Unseen" filter is active, marking as mastered removes it)
+                if (!isLastQuestion && !willBeFilteredOnMark) onNext();
               }}
               className={clsx(
                 "p-2 rounded-full transition-all",

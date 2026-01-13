@@ -58,6 +58,8 @@ interface StudyCardImmersiveProps {
   currentIndex: number;
   totalQuestions: number;
   quizMode: boolean;
+  /** When true, the current question will be removed from the list after marking (e.g., unseen filter active) */
+  willBeFilteredOnMark?: boolean;
 }
 
 export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
@@ -71,6 +73,7 @@ export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
   currentIndex,
   totalQuestions,
   quizMode,
+  willBeFilteredOnMark = false,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const correctAnswer = question.answer;
@@ -486,7 +489,8 @@ export const StudyCardImmersive: React.FC<StudyCardImmersiveProps> = ({
             <button
               onClick={() => {
                 onMarkStatus('mastered');
-                if (!isLastQuestion) onNext();
+                // Don't auto-advance if the question will be removed from the filtered list
+                if (!isLastQuestion && !willBeFilteredOnMark) onNext();
               }}
               className={clsx(
                 "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
