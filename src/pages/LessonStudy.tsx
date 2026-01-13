@@ -12,7 +12,8 @@ import {
   X,
   ChevronLeft,
   Maximize2,
-  Minimize2
+  Minimize2,
+  HelpCircle
 } from 'lucide-react';
 import { StudyCard } from '../components/StudyCard';
 import { StudyCardImmersive } from '../components/StudyCardImmersive';
@@ -101,6 +102,14 @@ export const LessonStudy = () => {
     return 'compact';
   });
 
+  // Quiz mode state with localStorage persistence
+  const [quizMode, setQuizMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('studyQuizMode') === 'true';
+    }
+    return false; // Default: OFF (flashcard mode)
+  });
+
   // Track if screen is large enough for immersive view
   const [isLargeScreen, setIsLargeScreen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -124,6 +133,11 @@ export const LessonStudy = () => {
   useEffect(() => {
     localStorage.setItem('studyViewMode', viewMode);
   }, [viewMode]);
+
+  // Persist quiz mode preference
+  useEffect(() => {
+    localStorage.setItem('studyQuizMode', String(quizMode));
+  }, [quizMode]);
 
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'compact' ? 'immersive' : 'compact');
@@ -419,6 +433,21 @@ export const LessonStudy = () => {
           </p>
           
           <div className="flex items-center gap-2">
+            {/* Quiz Mode Toggle */}
+            <button
+              onClick={() => setQuizMode(!quizMode)}
+              className={clsx(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                quizMode 
+                  ? "bg-amber-500 text-white" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+              title={quizMode ? "Disable Quiz Mode" : "Enable Quiz Mode"}
+            >
+              <HelpCircle size={14} />
+              <span>Quiz</span>
+            </button>
+
             {/* View Toggle - Only show on lg screens */}
             <button
               onClick={toggleViewMode}
@@ -534,6 +563,7 @@ export const LessonStudy = () => {
                 onToggleBookmark={handleToggleBookmark}
                 isFirstQuestion={currentIndex === 0}
                 isLastQuestion={currentIndex === questions.length - 1}
+                quizMode={quizMode}
               />
             </div>
             
@@ -549,6 +579,7 @@ export const LessonStudy = () => {
                 isLastQuestion={currentIndex === questions.length - 1}
                 currentIndex={currentIndex}
                 totalQuestions={questions.length}
+                quizMode={quizMode}
               />
             </div>
           </>

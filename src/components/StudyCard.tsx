@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
-import { BookOpen, AlertTriangle, Bookmark, Check, RotateCcw, ChevronRight, ChevronLeft } from 'lucide-react';
+import { BookOpen, AlertTriangle, Bookmark, Check, RotateCcw, ChevronRight, ChevronLeft, X, Eye } from 'lucide-react';
 
 interface Choice {
   position: number;
@@ -44,6 +45,7 @@ interface StudyCardProps {
   onToggleBookmark: () => void;
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
+  quizMode: boolean;
 }
 
 export const StudyCard: React.FC<StudyCardProps> = ({
@@ -54,8 +56,32 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   onToggleBookmark,
   isFirstQuestion,
   isLastQuestion,
+  quizMode,
 }) => {
   const correctAnswer = question.answer;
+  
+  // Quiz mode state
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [hasAnswered, setHasAnswered] = useState(false);
+
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setHasAnswered(false);
+  }, [question.id]);
+
+  // Determine if we should show the answer (always in flashcard mode, or after answering in quiz mode)
+  const showAnswer = !quizMode || hasAnswered;
+
+  const handleChoiceClick = (position: number) => {
+    if (!quizMode || hasAnswered) return;
+    setSelectedAnswer(position);
+    setHasAnswered(true);
+  };
+
+  const handleRevealAnswer = () => {
+    setHasAnswered(true);
+  };
   
   const isCorrectChoice = (position: number) => {
     if (typeof correctAnswer === 'number') {
@@ -115,41 +141,83 @@ export const StudyCard: React.FC<StudyCardProps> = ({
             {/* Choices / Answer */}
             <div className="space-y-2 mb-6">
               {question.answerType === 'INPUT' ? (
-                <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block mb-1">
-                    Correct Answer
-                  </span>
-                  <span className="text-xl font-black text-emerald-800">{String(correctAnswer)}</span>
-                </div>
-              ) : question.answerType === 'ORDER' ? (
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Correct Order
+                showAnswer ? (
+                  <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
+                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block mb-1">
+                      Correct Answer
+                    </span>
+                    <span className="text-xl font-black text-emerald-800">{String(correctAnswer)}</span>
                   </div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {(correctAnswer as number[]).map((pos, idx) => {
-                      const choice = question.choices.find(c => c.position === pos);
-                      return (
-                        <div key={idx} className="relative">
-                          <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs z-10">
-                            {idx + 1}
+                ) : (
+                  <button
+                    onClick={handleRevealAnswer}
+                    className="w-full p-4 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Eye size={18} className="text-slate-600" />
+                    <span className="text-sm font-bold text-slate-600">Reveal Answer</span>
+                  </button>
+                )
+              ) : question.answerType === 'ORDER' ? (
+                showAnswer ? (
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Correct Order
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {(correctAnswer as number[]).map((pos, idx) => {
+                        const choice = question.choices.find(c => c.position === pos);
+                        return (
+                          <div key={idx} className="relative">
+                            <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs z-10">
+                              {idx + 1}
+                            </div>
+                            {choice?.imageUrl ? (
+                              <img 
+                                src={choice.imageUrl} 
+                                alt="" 
+                                className="w-20 h-20 object-contain border-2 border-emerald-200 rounded-xl bg-white p-2"
+                              />
+                            ) : (
+                              <div className="w-20 h-20 border-2 border-emerald-200 rounded-xl bg-emerald-50 flex items-center justify-center p-2">
+                                <span className="text-xs font-medium text-center">{choice?.text}</span>
+                              </div>
+                            )}
                           </div>
-                          {choice?.imageUrl ? (
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Arrange in correct order
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {question.choices.map((choice) => (
+                        <div key={choice.position} className="relative">
+                          {choice.imageUrl ? (
                             <img 
                               src={choice.imageUrl} 
                               alt="" 
-                              className="w-20 h-20 object-contain border-2 border-emerald-200 rounded-xl bg-white p-2"
+                              className="w-20 h-20 object-contain border-2 border-slate-200 rounded-xl bg-white p-2"
                             />
                           ) : (
-                            <div className="w-20 h-20 border-2 border-emerald-200 rounded-xl bg-emerald-50 flex items-center justify-center p-2">
-                              <span className="text-xs font-medium text-center">{choice?.text}</span>
+                            <div className="w-20 h-20 border-2 border-slate-200 rounded-xl bg-slate-50 flex items-center justify-center p-2">
+                              <span className="text-xs font-medium text-center">{choice.text}</span>
                             </div>
                           )}
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleRevealAnswer}
+                      className="w-full p-3 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Eye size={18} className="text-slate-600" />
+                      <span className="text-sm font-bold text-slate-600">Reveal Correct Order</span>
+                    </button>
                   </div>
-                </div>
+                )
               ) : (
                 // SINGLE_CHOICE or YES_NO
                 (() => {
@@ -160,21 +228,46 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                       <div className="grid grid-cols-2 gap-3">
                         {question.choices.map((choice) => {
                           const isCorrect = isCorrectChoice(choice.position);
+                          const isSelected = selectedAnswer === choice.position;
+                          const isWrongSelection = showAnswer && isSelected && !isCorrect;
+                          
+                          // Determine styling based on quiz mode and answer state
+                          let borderClass = "border-slate-200";
+                          let opacityClass = "";
+                          let ringClass = "";
+                          
+                          if (showAnswer) {
+                            if (isCorrect) {
+                              borderClass = "border-emerald-500";
+                              ringClass = "ring-2 ring-emerald-100";
+                            } else if (isWrongSelection) {
+                              borderClass = "border-rose-500";
+                              ringClass = "ring-2 ring-rose-100";
+                            } else {
+                              opacityClass = "opacity-65";
+                            }
+                          } else if (quizMode) {
+                            borderClass = "border-slate-200 hover:border-indigo-300 cursor-pointer";
+                          }
+                          
                           return (
                             <div
                               key={choice.position}
+                              onClick={() => handleChoiceClick(choice.position)}
                               className={clsx(
-                                "relative aspect-square rounded-xl border-2 overflow-hidden bg-white",
-                                isCorrect 
-                                  ? "border-emerald-500 ring-2 ring-emerald-100" 
-                                  : "border-slate-200 opacity-65"
+                                "relative aspect-square rounded-xl border-2 overflow-hidden bg-white transition-all",
+                                borderClass,
+                                opacityClass,
+                                ringClass
                               )}
                             >
                               <div className={clsx(
                                 "absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs z-10",
-                                isCorrect 
+                                showAnswer && isCorrect 
                                   ? "bg-emerald-500 text-white" 
-                                  : "bg-white/90 text-slate-500 border border-slate-200"
+                                  : showAnswer && isWrongSelection
+                                    ? "bg-rose-500 text-white"
+                                    : "bg-white/90 text-slate-500 border border-slate-200"
                               )}>
                                 {String.fromCharCode(65 + choice.position)}
                               </div>
@@ -185,10 +278,17 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                                   className="w-full h-full object-contain p-3"
                                 />
                               )}
-                              {isCorrect && (
+                              {showAnswer && isCorrect && (
                                 <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
                                   <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center">
                                     <Check size={24} strokeWidth={3} />
+                                  </div>
+                                </div>
+                              )}
+                              {showAnswer && isWrongSelection && (
+                                <div className="absolute inset-0 bg-rose-500/10 flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-rose-500 text-white rounded-full flex items-center justify-center">
+                                    <X size={24} strokeWidth={3} />
                                   </div>
                                 </div>
                               )}
@@ -202,27 +302,51 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                   // Text-based choices
                   return question.choices.map((choice) => {
                     const isCorrect = isCorrectChoice(choice.position);
+                    const isSelected = selectedAnswer === choice.position;
+                    const isWrongSelection = showAnswer && isSelected && !isCorrect;
+                    
+                    // Determine styling based on quiz mode and answer state
+                    let containerClass = "border-slate-100 bg-white opacity-65";
+                    let iconClass = "bg-slate-100 text-slate-400";
+                    let textClass = "text-slate-600";
+                    let icon: React.ReactNode = String.fromCharCode(65 + choice.position);
+                    
+                    if (showAnswer) {
+                      if (isCorrect) {
+                        containerClass = "border-emerald-500 bg-emerald-50";
+                        iconClass = "bg-emerald-500 text-white";
+                        textClass = "text-emerald-900";
+                        icon = <Check size={14} strokeWidth={3} />;
+                      } else if (isWrongSelection) {
+                        containerClass = "border-rose-500 bg-rose-50";
+                        iconClass = "bg-rose-500 text-white";
+                        textClass = "text-rose-900";
+                        icon = <X size={14} strokeWidth={3} />;
+                      }
+                    } else if (quizMode) {
+                      containerClass = "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-all";
+                      iconClass = "bg-slate-100 text-slate-500";
+                      textClass = "text-slate-700";
+                    }
+                    
                     return (
                       <div
                         key={choice.position}
+                        onClick={() => handleChoiceClick(choice.position)}
                         className={clsx(
                           "p-3 rounded-xl border-2 flex items-center gap-3",
-                          isCorrect 
-                            ? "border-emerald-500 bg-emerald-50" 
-                            : "border-slate-100 bg-white opacity-65"
+                          containerClass
                         )}
                       >
                         <span className={clsx(
                           "w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm shrink-0",
-                          isCorrect 
-                            ? "bg-emerald-500 text-white" 
-                            : "bg-slate-100 text-slate-400"
+                          iconClass
                         )}>
-                          {isCorrect ? <Check size={14} strokeWidth={3} /> : String.fromCharCode(65 + choice.position)}
+                          {icon}
                         </span>
                         <span className={clsx(
                           "text-sm font-medium",
-                          isCorrect ? "text-emerald-900" : "text-slate-600"
+                          textClass
                         )}>
                           {choice.text}
                         </span>
@@ -234,7 +358,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
             </div>
 
             {/* Explanation */}
-            {question.explanation && (
+            {showAnswer && question.explanation && (
               <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <BookOpen size={16} className="text-indigo-600" />
