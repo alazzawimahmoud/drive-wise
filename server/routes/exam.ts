@@ -394,11 +394,11 @@ examRouter.post('/score', optionalAuth, async (req, res) => {
       };
     });
 
-    // Calculate score
+    // Calculate score with penalties (major faults = 5 points, minor faults = 1 point)
     const penalty = (majorFaults * EXAM_CONFIG.majorFaultPenalty) + (minorFaults * EXAM_CONFIG.minorFaultPenalty);
     const score = Math.max(0, EXAM_CONFIG.maxScore - penalty);
-    const passed = correct >= EXAM_CONFIG.passThreshold;
-    const percentage = Math.round((correct / answers.length) * 100);
+    const passed = score >= EXAM_CONFIG.passThreshold;
+    const percentage = Math.round((score / EXAM_CONFIG.maxScore) * 100);
 
     const result: ExamResult = {
       totalQuestions: answers.length,
