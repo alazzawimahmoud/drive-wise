@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { examSessions, examSessionAnswers, categories, categoryTranslations, questions, questionTranslations } from '../db/schema.js';
-import { eq, and, sql, desc, gte } from 'drizzle-orm';
+import { eq, and, sql, desc, gte, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 
 export const statsRouter = Router();
@@ -580,6 +580,71 @@ statsRouter.get('/ready-for-exam', async (req, res) => {
   } catch (error) {
     console.error('Error checking exam readiness:', error);
     res.status(500).json({ error: 'Failed to check exam readiness' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/stats/reset-exam-scores:
+ *   delete:
+ *     summary: Reset all exam scores
+ *     description: Deletes all exam sessions and their answers for the authenticated user. Study progress is preserved.
+ *     tags: [Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Exam scores reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 deletedSessions:
+ *                   type: integer
+ *                   description: Number of exam sessions deleted
+ *       401:
+ *         description: Not authenticated
+ */
+statsRouter.delete('/reset-exam-scores', async (req, res) => {
+  try {
+    const userId = req.user!.id;
+
+    // First, get all session IDs for this user to delete related answers
+    const userSessions = await db
+      .select({ id: examSessions.id })
+      .from(examSessions)
+      .where(eq(examSessions.userId, userId));
+
+    const sessionIds = userSessions.map(s => s.id);
+    let deletedAnswers = 0;
+
+    // Delete all exam session answers for these sessions
+    if (sessionIds.length > 0) {
+      const deleteAnswersResult = await db
+        .delete(examSessionAnswers)
+        .where(inArray(examSessionAnswers.sessionId, sessionIds));
+      deletedAnswers = deleteAnswersResult.rowCount || 0;
+    }
+
+    // Delete all exam sessions for this user
+    const deleteSessionsResult = await db
+      .delete(examSessions)
+      .where(eq(examSessions.userId, userId));
+
+    const deletedSessions = deleteSessionsResult.rowCount || 0;
+
+    res.json({
+      success: true,
+      deletedSessions,
+      deletedAnswers,
+      message: 'Your exam scores have been reset. Study progress has been preserved.',
+    });
+  } catch (error) {
+    console.error('Error resetting exam scores:', error);
+    res.status(500).json({ error: 'Failed to reset exam scores' });
   }
 });
 

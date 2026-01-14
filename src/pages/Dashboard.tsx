@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router';
 import { clsx } from 'clsx';
+import { useState } from 'react';
 import { 
   Trophy, 
   Target, 
@@ -10,7 +11,10 @@ import {
   BookOpen, 
   LogOut,
   AlertCircle,
-  ClipboardCheck
+  ClipboardCheck,
+  RotateCcw,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 
 interface Stats {
@@ -32,6 +36,24 @@ interface CategoryStat {
 export const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.delete('/stats/reset-exam-scores');
+      return res.data;
+    },
+    onSuccess: () => {
+      // Invalidate all stats queries to refresh the dashboard
+      queryClient.invalidateQueries({ queryKey: ['stats-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['exam-history'] });
+      setShowResetModal(false);
+      setConfirmText('');
+    },
+  });
 
   const { data: stats, isLoading: isStatsLoading } = useQuery<Stats>({
     queryKey: ['stats-overview'],
@@ -87,7 +109,13 @@ export const DashboardPage = () => {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100 space-y-2">
+          <button 
+            onClick={() => setShowResetModal(true)}
+            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:text-amber-600 transition-colors font-medium"
+          >
+            <RotateCcw size={20} /> Reset Exam Scores
+          </button>
           <button 
             onClick={logout}
             className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:text-rose-600 transition-colors font-medium"
@@ -223,6 +251,109 @@ export const DashboardPage = () => {
         </div>
 
       </main>
+
+      {/* Reset Exam Scores Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                  <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Reset Exam Scores</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowResetModal(false);
+                  setConfirmText('');
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-amber-800 text-sm font-medium">
+                  This will permanently delete all your exam history and statistics:
+                </p>
+                <ul className="mt-2 text-amber-700 text-sm space-y-1">
+                  <li>• All {stats?.totalSessions || 0} exam sessions</li>
+                  <li>• Pass rate and score history</li>
+                  <li>• Category performance data</li>
+                  <li>• Streak and progress tracking</li>
+                </ul>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                <p className="text-emerald-800 text-sm font-medium flex items-center gap-2">
+                  <BookOpen size={16} />
+                  Your study progress will be preserved
+                </p>
+                <p className="text-emerald-700 text-sm mt-1">
+                  Lessons studied and mastered questions will not be affected.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Type <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-rose-600">RESET</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="Type RESET here..."
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all font-mono"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setConfirmText('');
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => resetMutation.mutate()}
+                  disabled={confirmText !== 'RESET' || resetMutation.isPending}
+                  className={clsx(
+                    "flex-1 px-4 py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+                    confirmText === 'RESET' && !resetMutation.isPending
+                      ? "bg-rose-600 hover:bg-rose-700 text-white"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  )}
+                >
+                  {resetMutation.isPending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={18} />
+                      Reset Scores
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {resetMutation.isError && (
+                <p className="text-rose-600 text-sm text-center font-medium">
+                  Failed to reset scores. Please try again.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
