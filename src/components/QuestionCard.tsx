@@ -262,6 +262,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                       inputMode="numeric"
                       value={selectedAnswer || ''}
                       onChange={(e) => !showFeedback && onAnswer(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !showFeedback) {
+                          e.preventDefault();
+                          if (isLastQuestion) {
+                            onFinish();
+                          } else {
+                            onNext();
+                          }
+                        }
+                      }}
                       placeholder="Typ hier je antwoord..."
                       disabled={showFeedback}
                       className={clsx(
