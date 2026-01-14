@@ -31,7 +31,7 @@ export const examMachine = setup({
       | { type: 'FINISH_EXAM' }
       | { type: 'TICK' }
       | { type: 'SUBMIT_EXAM' }
-      | { type: 'REVIEW_RESULTS' }
+      | { type: 'REVIEW_RESULTS'; startIndex?: number }
       | { type: 'BACK_TO_SUMMARY' }
       | { type: 'REPORT.SUCCESS'; data: any }
       | { type: 'REPORT.FAILURE'; error: any };
@@ -117,7 +117,9 @@ export const examMachine = setup({
       on: {
         REVIEW_RESULTS: {
           target: 'reviewing_results',
-          actions: assign({ currentQuestionIndex: 0 }),
+          actions: assign({ 
+            currentQuestionIndex: ({ event }) => event.startIndex ?? 0 
+          }),
         },
       },
     },

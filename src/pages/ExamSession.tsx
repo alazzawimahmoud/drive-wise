@@ -164,6 +164,7 @@ export const ExamSession = () => {
               isFirstQuestion={currentQuestionIndex === 0}
               isLastQuestion={currentQuestionIndex === questions.length - 1}
               onToggleHelp={() => setShowShortcuts(prev => !prev)}
+              onBackToSummary={state.matches('reviewing_results') ? () => send({ type: 'BACK_TO_SUMMARY' }) : undefined}
             />
           ) : (
             <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto h-full flex flex-col">
@@ -301,6 +302,45 @@ export const ExamSession = () => {
                           </svg>
                         </div>
                       </button>
+
+                      {/* Major Faults List */}
+                      {(() => {
+                        const majorFaultDetails = state.context.results?.details?.filter(
+                          (d: any) => !d.isCorrect && d.isMajorFault
+                        ) || [];
+                        
+                        if (majorFaultDetails.length === 0) return null;
+                        
+                        return (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-rose-600 uppercase tracking-wider px-1">
+                              Major Faults
+                            </div>
+                            {majorFaultDetails.map((detail: any) => {
+                              const questionIndex = questions.findIndex((q: any) => q.id === detail.questionId);
+                              return (
+                                <button
+                                  key={detail.questionId}
+                                  onClick={() => send({ type: 'REVIEW_RESULTS', startIndex: questionIndex })}
+                                  className="w-full p-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-left transition-all group"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                      {questionIndex + 1}
+                                    </div>
+                                    <p className="text-sm text-rose-900 font-medium line-clamp-2 flex-1">
+                                      {detail.questionText}
+                                    </p>
+                                    <svg className="w-4 h-4 text-rose-400 group-hover:text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (state.matches('reviewing') || state.matches('submitting')) && (
                     <>

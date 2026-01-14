@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { ChevronLeft, ChevronRight, Flag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, ArrowLeft } from 'lucide-react';
 import { useQuestionKeyboard } from '../hooks/useQuestionKeyboard';
 
 interface Choice {
@@ -44,6 +44,8 @@ interface QuestionCardProps {
   isLastQuestion: boolean;
   // Keyboard shortcuts
   onToggleHelp?: () => void;
+  // Review mode - back to summary
+  onBackToSummary?: () => void;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -63,6 +65,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   isFirstQuestion,
   isLastQuestion,
   onToggleHelp,
+  onBackToSummary,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -147,15 +150,25 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="text-sm md:text-base font-bold text-slate-400">{totalQuestions}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
-              <span className={clsx(
-                "text-sm md:text-base font-mono font-bold",
-                timeLeft < 300 ? "text-rose-600" : "text-slate-700"
-              )}>
-                {formatTime(timeLeft)}
-              </span>
-            </div>
+            {onBackToSummary ? (
+              <button
+                onClick={onBackToSummary}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              >
+                <ArrowLeft size={16} />
+                <span>Summary</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Time</span>
+                <span className={clsx(
+                  "text-sm md:text-base font-mono font-bold",
+                  timeLeft < 300 ? "text-rose-600" : "text-slate-700"
+                )}>
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Animated Question Content */}
