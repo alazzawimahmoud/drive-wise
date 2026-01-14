@@ -237,7 +237,11 @@ export const ExamSession = () => {
                           : 'Keep practicing and try again.'}
                       </p>
 
-                      <div className="grid grid-cols-2 gap-3 md:gap-4 mb-8">
+                      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
+                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.score}/{results.maxScore}</div>
+                          <div className="text-xs md:text-sm text-slate-500 font-medium">Points</div>
+                        </div>
                         <div className="bg-slate-50 rounded-2xl p-4 text-center">
                           <div className="text-2xl md:text-3xl font-black text-slate-900">{results.percentage}%</div>
                           <div className="text-xs md:text-sm text-slate-500 font-medium">Score</div>
@@ -246,13 +250,15 @@ export const ExamSession = () => {
                           <div className="text-2xl md:text-3xl font-black text-slate-900">{results.correct}/{results.totalQuestions}</div>
                           <div className="text-xs md:text-sm text-slate-500 font-medium">Correct</div>
                         </div>
-                        <div className="bg-amber-50 rounded-2xl p-4 text-center">
-                          <div className="text-2xl md:text-3xl font-black text-amber-600">{results.minorFaults}</div>
-                          <div className="text-xs md:text-sm text-amber-600 font-medium">Minor Faults</div>
-                        </div>
-                        <div className="bg-rose-50 rounded-2xl p-4 text-center">
-                          <div className="text-2xl md:text-3xl font-black text-rose-600">{results.majorFaults}</div>
-                          <div className="text-xs md:text-sm text-rose-600 font-medium">Major Faults</div>
+                        <div className="col-span-3 grid grid-cols-2 gap-3 md:gap-4">
+                          <div className="bg-amber-50 rounded-2xl p-4 text-center">
+                            <div className="text-2xl md:text-3xl font-black text-amber-600">{results.minorFaults}</div>
+                            <div className="text-xs md:text-sm text-amber-600 font-medium">Minor Faults</div>
+                          </div>
+                          <div className="bg-rose-50 rounded-2xl p-4 text-center">
+                            <div className="text-2xl md:text-3xl font-black text-rose-600">{results.majorFaults}</div>
+                            <div className="text-xs md:text-sm text-rose-600 font-medium">Major Faults</div>
+                          </div>
                         </div>
                       </div>
 
