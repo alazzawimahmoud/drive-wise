@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { StudyCard } from '../components/StudyCard';
 import { StudyCardImmersive } from '../components/StudyCardImmersive';
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
+import { STUDY_SHORTCUTS_SECTIONS } from '../hooks/useQuestionKeyboard';
 import api from '../lib/api';
 
 type ViewMode = 'compact' | 'immersive';
@@ -243,51 +245,10 @@ export const LessonStudy = () => {
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
-  // Keyboard shortcuts
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Don't trigger if user is typing in an input
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowLeft':
-        e.preventDefault();
-        handlePrevious();
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        handleNext();
-        break;
-      case 'i':
-      case 'I':
-        e.preventDefault();
-        handleMarkStatus('needs_review');
-        break;
-      case '?':
-        e.preventDefault();
-        setShowShortcuts(prev => !prev);
-        break;
-      case 'b':
-      case 'B':
-        e.preventDefault();
-        handleToggleBookmark();
-        break;
-      case ' ':
-      case 'Enter':
-        e.preventDefault();
-        handleMarkStatus('mastered');
-        if (data && currentIndex < data.questions.length - 1) {
-          handleNext();
-        }
-        break;
-    }
-  }, [currentIndex, data]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  // Toggle shortcuts modal - passed to child components
+  const handleToggleHelp = () => {
+    setShowShortcuts(prev => !prev);
+  };
 
   if (isLoading) {
     return (
@@ -701,6 +662,7 @@ export const LessonStudy = () => {
                 onNext={handleNext}
                 onMarkStatus={handleMarkStatus}
                 onToggleBookmark={handleToggleBookmark}
+                onToggleHelp={handleToggleHelp}
                 isFirstQuestion={currentIndex === 0}
                 isLastQuestion={currentIndex === questions.length - 1}
                 quizMode={quizMode}
@@ -716,6 +678,7 @@ export const LessonStudy = () => {
                 onNext={handleNext}
                 onMarkStatus={handleMarkStatus}
                 onToggleBookmark={handleToggleBookmark}
+                onToggleHelp={handleToggleHelp}
                 isFirstQuestion={currentIndex === 0}
                 isLastQuestion={currentIndex === questions.length - 1}
                 currentIndex={currentIndex}
@@ -761,37 +724,11 @@ export const LessonStudy = () => {
       )}
 
       {/* Keyboard Shortcuts Modal */}
-      {showShortcuts && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <Keyboard size={20} className="text-indigo-600" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Keyboard Shortcuts</h3>
-              </div>
-              <button
-                onClick={() => setShowShortcuts(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <ShortcutRow keys={['←']} description="Previous question" />
-              <ShortcutRow keys={['→']} description="Next question" />
-              <ShortcutRow keys={['Space']} description="Mark as mastered & next" />
-              <ShortcutRow keys={['I']} description="Mark for review" />
-              <ShortcutRow keys={['B']} description="Toggle bookmark" />
-              <ShortcutRow keys={['?']} description="Show shortcuts" />
-            </div>
-            <p className="text-xs text-slate-400 mt-4 text-center">
-              Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-mono">?</kbd> to toggle this panel
-            </p>
-          </div>
-        </div>
-      )}
+      <KeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        sections={STUDY_SHORTCUTS_SECTIONS}
+      />
     </div>
   );
 };
@@ -871,19 +808,5 @@ const FilterButton = ({
     {icon}
     {label}
   </button>
-);
-
-// Shortcut Row Component
-const ShortcutRow = ({ keys, description }: { keys: string[]; description: string }) => (
-  <div className="flex items-center justify-between">
-    <span className="text-sm text-slate-600">{description}</span>
-    <div className="flex gap-1">
-      {keys.map((key, i) => (
-        <kbd key={i} className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-mono font-bold text-slate-700 min-w-[28px] text-center">
-          {key}
-        </kbd>
-      ))}
-    </div>
-  </div>
 );
 

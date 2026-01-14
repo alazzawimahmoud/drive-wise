@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useMachine } from '@xstate/react';
 import { examMachine } from '../store/examMachine';
 import { QuestionCard } from '../components/QuestionCard';
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
 import api from '../lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { EXAM_SHORTCUTS } from '../hooks/useQuestionKeyboard';
 
 interface ExamResult {
   totalQuestions: number;
@@ -29,6 +31,7 @@ export const ExamSession = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [results, setResults] = useState<ExamResult | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const { data: examData, isLoading: isExamLoading } = useQuery({
     queryKey: ['exam-generate'],
@@ -148,6 +151,7 @@ export const ExamSession = () => {
               finishLabel={state.matches('reviewing_results') ? "Back to Summary" : "Finish Exam"}
               isFirstQuestion={currentQuestionIndex === 0}
               isLastQuestion={currentQuestionIndex === questions.length - 1}
+              onToggleHelp={() => setShowShortcuts(prev => !prev)}
             />
           ) : (
             <div className="w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto h-full flex flex-col">
@@ -415,6 +419,13 @@ export const ExamSession = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        shortcuts={EXAM_SHORTCUTS}
+      />
     </div>
   );
 };

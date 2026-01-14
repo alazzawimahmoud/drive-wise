@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { ChevronLeft, ChevronRight, Flag } from 'lucide-react';
+import { useQuestionKeyboard } from '../hooks/useQuestionKeyboard';
 
 interface Choice {
   position: number;
@@ -41,6 +42,8 @@ interface QuestionCardProps {
   finishLabel?: string;
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
+  // Keyboard shortcuts
+  onToggleHelp?: () => void;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -59,6 +62,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   finishLabel = "Finish Exam",
   isFirstQuestion,
   isLastQuestion,
+  onToggleHelp,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -72,6 +76,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Keyboard shortcuts for exam mode
+  useQuestionKeyboard({
+    answerType: question.answerType,
+    choices: question.choices,
+    selectedAnswer,
+    hasAnswered: showFeedback, // In review mode, don't allow answer changes
+    onSelectAnswer: !showFeedback ? onAnswer : undefined,
+    onPrevious: !isFirstQuestion ? onPrevious : undefined,
+    onNext: !isLastQuestion ? onNext : undefined,
+    onToggleHelp,
+    enabled: true,
+    isStudyMode: false, // Exam mode - disable study-only shortcuts
+    isLastQuestion,
+  });
+
   const isCorrect = React.useMemo(() => {
     if (selectedAnswer === undefined || selectedAnswer === null) return false;
     if (question.answer === undefined || question.answer === null) return false;

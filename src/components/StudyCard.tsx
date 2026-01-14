@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { BookOpen, AlertTriangle, Bookmark, Check, RotateCcw, ChevronRight, ChevronLeft, X, Eye } from 'lucide-react';
+import { useQuestionKeyboard } from '../hooks/useQuestionKeyboard';
 
 interface Choice {
   position: number;
@@ -43,6 +44,7 @@ interface StudyCardProps {
   onNext: () => void;
   onMarkStatus: (status: 'seen' | 'mastered' | 'needs_review') => void;
   onToggleBookmark: () => void;
+  onToggleHelp?: () => void;
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
   quizMode: boolean;
@@ -56,6 +58,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   onNext,
   onMarkStatus,
   onToggleBookmark,
+  onToggleHelp,
   isFirstQuestion,
   isLastQuestion,
   quizMode,
@@ -64,7 +67,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   const correctAnswer = question.answer;
   
   // Quiz mode state
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | number[] | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
 
   // Reset state when question changes
@@ -76,15 +79,53 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   // Determine if we should show the answer (always in flashcard mode, or after answering in quiz mode)
   const showAnswer = !quizMode || hasAnswered;
 
+  const handleSelectAnswer = (answer: number | string | number[]) => {
+    if (!quizMode || hasAnswered) return;
+    
+    if (question.answerType === 'ORDER') {
+      // For ORDER, we build up the selection until complete
+      const orderAnswer = answer as number[];
+      setSelectedAnswer(orderAnswer);
+      // Auto-submit when all choices are selected
+      if (orderAnswer.length === question.choices.length) {
+        setHasAnswered(true);
+      }
+    } else {
+      setSelectedAnswer(answer as number);
+      setHasAnswered(true);
+    }
+  };
+
   const handleChoiceClick = (position: number) => {
     if (!quizMode || hasAnswered) return;
-    setSelectedAnswer(position);
-    setHasAnswered(true);
+    handleSelectAnswer(position);
   };
 
   const handleRevealAnswer = () => {
     setHasAnswered(true);
   };
+
+  // Keyboard shortcuts
+  useQuestionKeyboard({
+    answerType: question.answerType,
+    choices: question.choices,
+    selectedAnswer,
+    hasAnswered: !quizMode || hasAnswered, // In flashcard mode, treat as "answered"
+    onSelectAnswer: quizMode ? handleSelectAnswer : undefined,
+    onRevealAnswer: quizMode ? handleRevealAnswer : undefined,
+    onPrevious: !isFirstQuestion ? onPrevious : undefined,
+    onNext: !isLastQuestion ? onNext : undefined,
+    onMarkMastered: () => {
+      onMarkStatus('mastered');
+      if (!isLastQuestion && !willBeFilteredOnMark) onNext();
+    },
+    onMarkReview: () => onMarkStatus('needs_review'),
+    onToggleBookmark,
+    onToggleHelp,
+    enabled: true,
+    isStudyMode: true,
+    isLastQuestion,
+  });
   
   const isCorrectChoice = (position: number) => {
     if (typeof correctAnswer === 'number') {
@@ -426,7 +467,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
                   : "hover:bg-slate-100 text-slate-400"
               )}
               aria-label="Bookmark"
-              title="Bookmark (B)"
+              title="Bookmark (K)"
             >
               <Bookmark size={20} fill={question.isBookmarked ? 'currentColor' : 'none'} />
             </button>
