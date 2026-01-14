@@ -66,15 +66,26 @@ export const StudyCard: React.FC<StudyCardProps> = ({
 }) => {
   const correctAnswer = question.answer;
   
+  // Dev mode: auto-answer with correct answer
+  const DEV_AUTO_ANSWER = import.meta.env.DEV;
+  
   // Quiz mode state
   const [selectedAnswer, setSelectedAnswer] = useState<number | number[] | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
 
-  // Reset state when question changes
+  // Reset state when question changes (or pre-fill in dev mode)
   useEffect(() => {
-    setSelectedAnswer(null);
-    setHasAnswered(false);
-  }, [question.id]);
+    if (DEV_AUTO_ANSWER) {
+      // Auto-select the correct answer in dev mode
+      if (typeof correctAnswer === 'number' || Array.isArray(correctAnswer)) {
+        setSelectedAnswer(correctAnswer as number | number[]);
+      }
+      setHasAnswered(true);
+    } else {
+      setSelectedAnswer(null);
+      setHasAnswered(false);
+    }
+  }, [question.id, DEV_AUTO_ANSWER, correctAnswer]);
 
   // Determine if we should show the answer (always in flashcard mode, or after answering in quiz mode)
   const showAnswer = !quizMode || hasAnswered;

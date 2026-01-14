@@ -60,6 +60,18 @@ export const ExamSession = () => {
     }
   }, [examData, state, send]);
 
+  // Dev mode: auto-answer all questions with correct answers
+  useEffect(() => {
+    if (import.meta.env.DEV && state.matches('answering') && examData?.questions) {
+      // Auto-submit answers for all questions that have answers included
+      examData.questions.forEach((q: any) => {
+        if (q.answer !== undefined) {
+          send({ type: 'SUBMIT_ANSWER', questionId: q.id, answer: q.answer });
+        }
+      });
+    }
+  }, [state.value, examData, send]);
+
   useEffect(() => {
     if (state.matches('answering')) {
       const timer = setInterval(() => {
@@ -237,30 +249,38 @@ export const ExamSession = () => {
                           : 'Keep practicing and try again.'}
                       </p>
 
-                      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
-                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
-                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.score}/{results.maxScore}</div>
-                          <div className="text-xs md:text-sm text-slate-500 font-medium">Points</div>
+                      {/* Points - Hero Metric */}
+                      <div className={clsx(
+                        "rounded-2xl p-6 mb-4",
+                        results.passed ? "bg-emerald-50" : "bg-rose-50"
+                      )}>
+                        <div className={clsx(
+                          "text-5xl md:text-6xl font-black mb-1",
+                          results.passed ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          {results.score}<span className="text-2xl md:text-3xl text-slate-400">/{results.maxScore}</span>
                         </div>
-                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
-                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.percentage}%</div>
-                          <div className="text-xs md:text-sm text-slate-500 font-medium">Score</div>
-                        </div>
-                        <div className="bg-slate-50 rounded-2xl p-4 text-center">
-                          <div className="text-2xl md:text-3xl font-black text-slate-900">{results.correct}/{results.totalQuestions}</div>
-                          <div className="text-xs md:text-sm text-slate-500 font-medium">Correct</div>
-                        </div>
-                        <div className="col-span-3 grid grid-cols-2 gap-3 md:gap-4">
-                          <div className="bg-amber-50 rounded-2xl p-4 text-center">
-                            <div className="text-2xl md:text-3xl font-black text-amber-600">{results.minorFaults}</div>
-                            <div className="text-xs md:text-sm text-amber-600 font-medium">Minor Faults</div>
-                          </div>
-                          <div className="bg-rose-50 rounded-2xl p-4 text-center">
-                            <div className="text-2xl md:text-3xl font-black text-rose-600">{results.majorFaults}</div>
-                            <div className="text-xs md:text-sm text-rose-600 font-medium">Major Faults</div>
-                          </div>
+                        <div className="text-sm text-slate-500 font-medium">
+                          Points · {results.passThreshold} needed to pass
                         </div>
                       </div>
+
+                      {/* Faults breakdown - only show if there are any */}
+                      {(results.minorFaults > 0 || results.majorFaults > 0) && (
+                        <div className="flex justify-center gap-4 mb-8 text-sm">
+                          {results.minorFaults > 0 && (
+                            <span className="text-amber-600 font-semibold">
+                              {results.minorFaults} minor fault{results.minorFaults !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {results.majorFaults > 0 && (
+                            <span className="text-rose-600 font-semibold">
+                              {results.majorFaults} major fault{results.majorFaults !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {results.minorFaults === 0 && results.majorFaults === 0 && <div className="mb-8" />}
 
                       <button
                         onClick={() => send({ type: 'REVIEW_RESULTS' })}

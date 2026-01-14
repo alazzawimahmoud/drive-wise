@@ -8,27 +8,10 @@ import { getAssetUrl } from '../config.js';
 
 export const examRouter = Router();
 
+// Dev mode flag - when true, answers are included in exam questions
+const isDev = process.env.NODE_ENV !== 'production';
+
 // Belgian driving theory exam configuration
-// In development: 10 questions, 1 minute
-// In production: 50 questions, 90 minutes
-// const isDev = process.env.NODE_ENV !== 'production';
-// const EXAM_CONFIG: ExamConfig = isDev
-//   ? {
-//       totalQuestions: 10,
-//       passThreshold: 8, // 80% of 10 = 8
-//       majorFaultPenalty: 5,
-//       minorFaultPenalty: 1,
-//       maxScore: 10,
-//       timeLimitMinutes: 1,
-//     }
-//   : {
-//       totalQuestions: 50,
-//       passThreshold: 41,
-//       majorFaultPenalty: 5,
-//       minorFaultPenalty: 1,
-//       maxScore: 50,
-//       timeLimitMinutes: 90,
-//     };
 const EXAM_CONFIG: ExamConfig = {
       totalQuestions: 50,
       passThreshold: 41,
@@ -103,6 +86,7 @@ examRouter.post('/generate', async (req, res) => {
         originalId: questions.originalId,
         answerType: questions.answerType,
         isMajorFault: questions.isMajorFault,
+        answer: questions.answer, // Include answer for dev mode
         questionText: questionTranslations.questionText,
         categorySlug: categories.slug,
         categoryTitle: categoryTranslations.title,
@@ -195,6 +179,8 @@ examRouter.post('/generate', async (req, res) => {
             imageUrl: getAssetUrl(c.imageUuid),
           })),
           lessons: lessonsFormatted,
+          // Include answer only in dev mode for auto-answering
+          ...(isDev ? { answer: q.answer } : {}),
         };
       })
     );
