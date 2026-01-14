@@ -619,27 +619,23 @@ statsRouter.delete('/reset-exam-scores', async (req, res) => {
       .where(eq(examSessions.userId, userId));
 
     const sessionIds = userSessions.map(s => s.id);
-    let deletedAnswers = 0;
+    const deletedSessions = sessionIds.length;
 
     // Delete all exam session answers for these sessions
     if (sessionIds.length > 0) {
-      const deleteAnswersResult = await db
+      await db
         .delete(examSessionAnswers)
         .where(inArray(examSessionAnswers.sessionId, sessionIds));
-      deletedAnswers = deleteAnswersResult.rowCount || 0;
     }
 
     // Delete all exam sessions for this user
-    const deleteSessionsResult = await db
+    await db
       .delete(examSessions)
       .where(eq(examSessions.userId, userId));
-
-    const deletedSessions = deleteSessionsResult.rowCount || 0;
 
     res.json({
       success: true,
       deletedSessions,
-      deletedAnswers,
       message: 'Your exam scores have been reset. Study progress has been preserved.',
     });
   } catch (error) {
