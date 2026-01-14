@@ -86,6 +86,8 @@ export const LessonStudy = () => {
   const queryClient = useQueryClient();
   
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Track current question ID to handle filtered list changes
+  const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -168,7 +170,33 @@ export const LessonStudy = () => {
   // Reset index when filters change
   useEffect(() => {
     setCurrentIndex(0);
+    setCurrentQuestionId(null);
   }, [filters]);
+
+  // Sync currentIndex with currentQuestionId when data changes
+  // This handles the case where a question is filtered out after marking
+  useEffect(() => {
+    if (!data?.questions.length) return;
+    
+    if (currentQuestionId === null) {
+      // No question ID tracked yet, set it from current index
+      setCurrentQuestionId(data.questions[currentIndex]?.id ?? null);
+    } else {
+      // Find the current question by ID in the new data
+      const newIndex = data.questions.findIndex(q => q.id === currentQuestionId);
+      
+      if (newIndex === -1) {
+        // Question was filtered out - keep the same index position (next question slides in)
+        // But ensure we don't go out of bounds
+        const boundedIndex = Math.min(currentIndex, data.questions.length - 1);
+        setCurrentIndex(boundedIndex);
+        setCurrentQuestionId(data.questions[boundedIndex]?.id ?? null);
+      } else if (newIndex !== currentIndex) {
+        // Question moved in the list (shouldn't happen often, but handle it)
+        setCurrentIndex(newIndex);
+      }
+    }
+  }, [data?.questions, currentQuestionId, currentIndex]);
 
   const markMutation = useMutation({
     mutationFn: async ({ questionId, status }: { questionId: number; status: string }) => {
@@ -201,6 +229,7 @@ export const LessonStudy = () => {
       queryClient.invalidateQueries({ queryKey: ['study-lesson', slug] });
       queryClient.invalidateQueries({ queryKey: ['study-progress'] });
       setCurrentIndex(0);
+      setCurrentQuestionId(null);
       setShowResetConfirm(false);
     },
   });
@@ -228,14 +257,18 @@ export const LessonStudy = () => {
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+    if (data && currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      setCurrentQuestionId(data.questions[newIndex]?.id ?? null);
     }
   };
 
   const handleNext = () => {
     if (data && currentIndex < data.questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      setCurrentQuestionId(data.questions[newIndex]?.id ?? null);
     }
   };
 
