@@ -249,7 +249,7 @@ export const AdminDashboardPage = () => {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder:text-slate-400"
                 />
                 <select
                   value={sortBy}
@@ -258,7 +258,7 @@ export const AdminDashboardPage = () => {
                       e.target.value as 'name' | 'created' | 'sessions' | 'passRate'
                     )
                   }
-                  className="px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 >
                   <option value="created">Sort by: Newest</option>
                   <option value="name">Sort by: Name</option>
