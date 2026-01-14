@@ -246,7 +246,7 @@ export async function seedLessons(
     lessonMap.set(l.number, l.id);
   }
   
-  // Add lesson translations
+  // Add lesson translations (upsert to handle re-seeding)
   for (const lesson of lessonList) {
     const lessonId = lessonMap.get(lesson.number);
     if (lessonId) {
@@ -255,7 +255,12 @@ export async function seedLessons(
         locale: 'nl-BE',
         title: lesson.topic,
         description: null,
-      }).onConflictDoNothing();
+      }).onConflictDoUpdate({
+        target: [schema.lessonTranslations.lessonId, schema.lessonTranslations.locale],
+        set: {
+          title: lesson.topic,
+        },
+      });
     }
   }
   
@@ -512,13 +517,19 @@ export async function assignOrphanQuestionsToOthersLesson(verbose = false): Prom
     othersLessonId = insertedLesson.id;
     if (verbose) console.log(`   ✓ Created "Others" lesson (id: ${othersLessonId})`);
     
-    // Add translation
+    // Add translation (upsert to handle re-seeding)
     await db.insert(schema.lessonTranslations).values({
       lessonId: othersLessonId,
       locale: 'nl-BE',
       title: OTHERS_LESSON_TITLE,
       description: 'Questions that do not belong to any specific lesson',
-    }).onConflictDoNothing();
+    }).onConflictDoUpdate({
+      target: [schema.lessonTranslations.lessonId, schema.lessonTranslations.locale],
+      set: {
+        title: OTHERS_LESSON_TITLE,
+        description: 'Questions that do not belong to any specific lesson',
+      },
+    });
   }
   
   // Find questions with lesson associations

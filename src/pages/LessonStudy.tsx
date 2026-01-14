@@ -342,59 +342,93 @@ export const LessonStudy = () => {
               </div>
               <p className="text-sm text-slate-500">{lesson.questionCount} questions total</p>
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={clsx(
-                "relative p-2 rounded-lg transition-colors",
-                activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
+            {/* Filter Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={clsx(
+                  "relative p-2 rounded-lg transition-colors",
+                  activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
+                )}
+              >
+                <Filter size={20} />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Filter Dropdown Panel */}
+              {showFilters && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowFilters(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-2 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">Filters</span>
+                      {activeFilterCount > 0 && (
+                        <button
+                          onClick={() => setFilters({
+                            majorFaultsOnly: false,
+                            unseenOnly: false,
+                            needsReview: false,
+                            bookmarked: false,
+                            shuffle: false,
+                          })}
+                          className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                        >
+                          <X size={10} />
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-1.5 space-y-0.5">
+                      <FilterDropdownItem 
+                        active={filters.majorFaultsOnly} 
+                        onClick={() => toggleFilter('majorFaultsOnly')}
+                        icon={<AlertTriangle size={14} />}
+                        label="Major Faults"
+                        description="Important questions"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.unseenOnly} 
+                        onClick={() => toggleFilter('unseenOnly')}
+                        icon={<Eye size={14} />}
+                        label="Unseen"
+                        description="Not studied yet"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.needsReview} 
+                        onClick={() => toggleFilter('needsReview')}
+                        icon={<RotateCcw size={14} />}
+                        label="Review"
+                        description="Marked for review"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.bookmarked} 
+                        onClick={() => toggleFilter('bookmarked')}
+                        icon={<Bookmark size={14} />}
+                        label="Saved"
+                        description="Bookmarked questions"
+                      />
+                    </div>
+                    <div className="border-t border-slate-100 p-1.5">
+                      <FilterDropdownItem 
+                        active={filters.shuffle} 
+                        onClick={() => toggleFilter('shuffle')}
+                        icon={<Shuffle size={14} />}
+                        label="Shuffle"
+                        description="Randomize order"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
-            >
-              <Filter size={20} />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-          
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="max-w-2xl mx-auto mt-4 p-4 bg-slate-50 rounded-xl">
-              <div className="flex flex-wrap gap-2">
-                <FilterButton 
-                  active={filters.majorFaultsOnly} 
-                  onClick={() => toggleFilter('majorFaultsOnly')}
-                  icon={<AlertTriangle size={14} />}
-                  label="Major Faults Only"
-                />
-                <FilterButton 
-                  active={filters.unseenOnly} 
-                  onClick={() => toggleFilter('unseenOnly')}
-                  icon={<Eye size={14} />}
-                  label="Unseen Only"
-                />
-                <FilterButton 
-                  active={filters.needsReview} 
-                  onClick={() => toggleFilter('needsReview')}
-                  icon={<RotateCcw size={14} />}
-                  label="Needs Review"
-                />
-                <FilterButton 
-                  active={filters.bookmarked} 
-                  onClick={() => toggleFilter('bookmarked')}
-                  icon={<Bookmark size={14} />}
-                  label="Bookmarked"
-                />
-                <FilterButton 
-                  active={filters.shuffle} 
-                  onClick={() => toggleFilter('shuffle')}
-                  icon={<Shuffle size={14} />}
-                  label="Shuffle"
-                />
-              </div>
             </div>
-          )}
+          </div>
         </header>
 
         {/* Empty State */}
@@ -554,85 +588,102 @@ export const LessonStudy = () => {
 
             <button
               onClick={() => setShowShortcuts(true)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              className="hidden sm:block p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
               title="Keyboard shortcuts (?)"
             >
               <Keyboard size={16} />
             </button>
 
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={clsx(
-                "relative p-1.5 rounded-lg transition-colors",
-                activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
-              )}
-              title="Filters"
-            >
-              <Filter size={16} />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className={clsx(
-            "mt-3 p-3 bg-slate-50 rounded-xl",
-            !showImmersive && "max-w-2xl mx-auto"
-          )}>
-            <div className="flex flex-wrap gap-2">
-              <FilterButton 
-                active={filters.majorFaultsOnly} 
-                onClick={() => toggleFilter('majorFaultsOnly')}
-                icon={<AlertTriangle size={14} />}
-                label="Major Faults"
-              />
-              <FilterButton 
-                active={filters.unseenOnly} 
-                onClick={() => toggleFilter('unseenOnly')}
-                icon={<Eye size={14} />}
-                label="Unseen"
-              />
-              <FilterButton 
-                active={filters.needsReview} 
-                onClick={() => toggleFilter('needsReview')}
-                icon={<RotateCcw size={14} />}
-                label="Review"
-              />
-              <FilterButton 
-                active={filters.bookmarked} 
-                onClick={() => toggleFilter('bookmarked')}
-                icon={<Bookmark size={14} />}
-                label="Saved"
-              />
-              <FilterButton 
-                active={filters.shuffle} 
-                onClick={() => toggleFilter('shuffle')}
-                icon={<Shuffle size={14} />}
-                label="Shuffle"
-              />
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => setFilters({
-                    majorFaultsOnly: false,
-                    unseenOnly: false,
-                    needsReview: false,
-                    bookmarked: false,
-                    shuffle: false,
-                  })}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                >
-                  <X size={12} />
-                  Clear
-                </button>
+            {/* Filter Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={clsx(
+                  "relative p-1.5 rounded-lg transition-colors",
+                  activeFilterCount > 0 ? "bg-indigo-100 text-indigo-600" : "hover:bg-slate-100 text-slate-500"
+                )}
+                title="Filters"
+              >
+                <Filter size={16} />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Filter Dropdown Panel */}
+              {showFilters && (
+                <>
+                  {/* Backdrop to close on click outside */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowFilters(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-2 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">Filters</span>
+                      {activeFilterCount > 0 && (
+                        <button
+                          onClick={() => setFilters({
+                            majorFaultsOnly: false,
+                            unseenOnly: false,
+                            needsReview: false,
+                            bookmarked: false,
+                            shuffle: false,
+                          })}
+                          className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                        >
+                          <X size={10} />
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-1.5 space-y-0.5">
+                      <FilterDropdownItem 
+                        active={filters.majorFaultsOnly} 
+                        onClick={() => toggleFilter('majorFaultsOnly')}
+                        icon={<AlertTriangle size={14} />}
+                        label="Major Faults"
+                        description="Important questions"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.unseenOnly} 
+                        onClick={() => toggleFilter('unseenOnly')}
+                        icon={<Eye size={14} />}
+                        label="Unseen"
+                        description="Not studied yet"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.needsReview} 
+                        onClick={() => toggleFilter('needsReview')}
+                        icon={<RotateCcw size={14} />}
+                        label="Review"
+                        description="Marked for review"
+                      />
+                      <FilterDropdownItem 
+                        active={filters.bookmarked} 
+                        onClick={() => toggleFilter('bookmarked')}
+                        icon={<Bookmark size={14} />}
+                        label="Saved"
+                        description="Bookmarked questions"
+                      />
+                    </div>
+                    <div className="border-t border-slate-100 p-1.5">
+                      <FilterDropdownItem 
+                        active={filters.shuffle} 
+                        onClick={() => toggleFilter('shuffle')}
+                        icon={<Shuffle size={14} />}
+                        label="Shuffle"
+                        description="Randomize order"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
-        )}
+        </div>
       </header>
 
       {/* Study Card - Compact or Immersive */}
@@ -745,7 +796,58 @@ export const LessonStudy = () => {
   );
 };
 
-// Filter Button Component
+// Filter Dropdown Item Component
+const FilterDropdownItem = ({ 
+  active, 
+  onClick, 
+  icon, 
+  label,
+  description
+}: { 
+  active: boolean; 
+  onClick: () => void; 
+  icon: React.ReactNode; 
+  label: string;
+  description: string;
+}) => (
+  <button
+    onClick={onClick}
+    className={clsx(
+      "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all text-left",
+      active 
+        ? "bg-indigo-50" 
+        : "hover:bg-slate-50"
+    )}
+  >
+    <div className={clsx(
+      "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+      active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
+    )}>
+      {icon}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className={clsx(
+        "text-sm font-semibold",
+        active ? "text-indigo-600" : "text-slate-700"
+      )}>
+        {label}
+      </div>
+      <div className="text-xs text-slate-400 truncate">{description}</div>
+    </div>
+    <div className={clsx(
+      "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+      active ? "border-indigo-600 bg-indigo-600" : "border-slate-300"
+    )}>
+      {active && (
+        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </div>
+  </button>
+);
+
+// Filter Button Component (for empty state)
 const FilterButton = ({ 
   active, 
   onClick, 

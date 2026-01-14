@@ -41,9 +41,9 @@ studyRouter.get('/lessons', optionalAuth, async (req, res) => {
     const locale = (req.query.locale as string) || 'nl-BE';
     const userId = req.user?.id;
 
-    // Get lessons with translations
+    // Get lessons with translations (use DISTINCT ON to avoid duplicates from translations)
     const lessonsResult = await db
-      .select({
+      .selectDistinctOn([lessons.id], {
         id: lessons.id,
         number: lessons.number,
         slug: lessons.slug,
@@ -59,7 +59,7 @@ studyRouter.get('/lessons', optionalAuth, async (req, res) => {
           eq(lessonTranslations.locale, locale)
         )
       )
-      .orderBy(lessons.sortOrder);
+      .orderBy(lessons.id, lessons.sortOrder);
 
     // Get question counts for each lesson (using distinct to avoid counting duplicates)
     const questionCounts = await db

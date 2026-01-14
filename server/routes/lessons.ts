@@ -29,9 +29,9 @@ lessonsRouter.get('/', async (req, res) => {
   try {
     const locale = (req.query.locale as string) || 'nl-BE';
 
-    // Get lessons with translations and question counts
+    // Get lessons with translations and question counts (use DISTINCT ON to avoid duplicates)
     const result = await db
-      .select({
+      .selectDistinctOn([lessons.id], {
         id: lessons.id,
         number: lessons.number,
         slug: lessons.slug,
@@ -47,7 +47,7 @@ lessonsRouter.get('/', async (req, res) => {
           eq(lessonTranslations.locale, locale)
         )
       )
-      .orderBy(lessons.sortOrder);
+      .orderBy(lessons.id, lessons.sortOrder);
 
     // Get question counts for each lesson
     const questionCounts = await db

@@ -194,7 +194,9 @@ export const lessonTranslations = pgTable('lesson_translations', {
   locale: varchar('locale', { length: 10 }).references(() => locales.code).notNull(),
   title: varchar('title', { length: 255 }).notNull(), // Topic name
   description: text('description'),
-});
+}, (table) => [
+  uniqueIndex('lesson_translations_lesson_locale_idx').on(table.lessonId, table.locale),
+]);
 
 // ============================================================================
 // QUESTIONS
